@@ -1,10 +1,39 @@
 import argv
+import dot_env
+import dot_env/env
 import filepath
+import gleam/http/request
+import gleam/http/response
+import gleam/httpc
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/result
+import gleeunit/should
 import glint
 import simplifile
+
+fn telegram_bot_token_flag() -> glint.Flag(String) {
+  let flag =
+    glint.string_flag("telegram-bot-token")
+    |> glint.flag_help("The Telegram Bot token")
+
+  case env.get_string("TELEGRAM_BOT_TOKEN") {
+    Ok(value) -> flag |> glint.flag_default(value)
+    Error(_) -> flag
+  }
+}
+
+fn telegram_chat_id_flag() -> glint.Flag(String) {
+  let flag =
+    glint.string_flag("telegram-chat-id")
+    |> glint.flag_help("The Telegram Chat ID")
+
+  case env.get_string("TELEGRAM_CHAT_ID") {
+    Ok(value) -> flag |> glint.flag_default(value)
+    Error(_) -> flag
+  }
+}
 
 fn channel_flag() -> glint.Flag(String) {
   glint.string_flag("channel")
@@ -75,23 +104,60 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   Nil
 }
 
-fn post_simple_text_message() -> glint.Command(Nil) {
+fn post_simple_text_message() -> glint.Command(
+  Result(response.Response(String), httpc.HttpError),
+) {
   use <- glint.command_help("Post a simple text message to Telegram")
-  use _, args, _ <- glint.command()
+  use bot_token <- glint.flag(telegram_bot_token_flag())
+  use chat_id <- glint.flag(telegram_chat_id_flag())
+  use _, args, flags <- glint.command()
+  let assert Ok(bot_token) = bot_token(flags)
+  let assert Ok(chat_id) = chat_id(flags)
 
-  let message = case args {
+  let assert Ok(message) = case args {
     [] -> Error("No message")
     [m, ..] -> Ok(m)
   }
 
-  case message {
-    Ok(m) -> echo "Let's print a message " <> m
-    Error(e) -> echo e
-  }
+  let assert Ok(base_req) =
+    request.to("https://api.telegram.org/" <> bot_token <> "/sendMessage")
+
+  let req =
+    request.prepend_header(
+      base_req,
+      "Content-Type",
+      "application/json; charset=utf-8",
+    )
+    |> request.set_body(
+      json.object([
+        #("chat_id", json.string(chat_id)),
+        #("text", json.string(message)),
+      ])
+      |> json.to_string,
+    )
+
+  // Send the HTTP request to the server
+  use resp <- result.try(httpc.send(req))
+
+  // We get a response record back
+  resp.status
+  |> should.equal(200)
+
+  resp
+  |> response.get_header("content-type")
+  |> should.equal(Ok("application/json"))
+
+  Ok(resp)
+
   Nil
 }
 
 pub fn main() {
+  dot_env.new()
+  |> dot_env.set_path(".env")
+  |> dot_env.set_debug(False)
+  |> dot_env.load
+
   glint.new()
   |> glint.with_name("telegram-lacky")
   |> glint.pretty_help(glint.default_pretty_help())
