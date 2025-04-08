@@ -104,21 +104,7 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   Nil
 }
 
-fn post_simple_text_message() -> glint.Command(
-  Result(response.Response(String), httpc.HttpError),
-) {
-  use <- glint.command_help("Post a simple text message to Telegram")
-  use bot_token <- glint.flag(telegram_bot_token_flag())
-  use chat_id <- glint.flag(telegram_chat_id_flag())
-  use _, args, flags <- glint.command()
-  let assert Ok(bot_token) = bot_token(flags)
-  let assert Ok(chat_id) = chat_id(flags)
-
-  let assert Ok(message) = case args {
-    [] -> Error("No message")
-    [m, ..] -> Ok(m)
-  }
-
+fn telegram_send_message(bot_token, chat_id, message) {
   let assert Ok(base_req) =
     request.to("https://api.telegram.org/" <> bot_token <> "/sendMessage")
 
@@ -148,6 +134,22 @@ fn post_simple_text_message() -> glint.Command(
   |> should.equal(Ok("application/json"))
 
   Ok(resp)
+}
+
+fn post_simple_text_message() -> glint.Command(Nil) {
+  use <- glint.command_help("Post a simple text message to Telegram")
+  use bot_token <- glint.flag(telegram_bot_token_flag())
+  use chat_id <- glint.flag(telegram_chat_id_flag())
+  use _, args, flags <- glint.command()
+  let assert Ok(bot_token) = bot_token(flags)
+  let assert Ok(chat_id) = chat_id(flags)
+
+  let assert Ok(message) = case args {
+    [] -> Error("No message")
+    [m, ..] -> Ok(m)
+  }
+
+  let _ = telegram_send_message(bot_token, chat_id, message)
 
   Nil
 }
