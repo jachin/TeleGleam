@@ -10,10 +10,21 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
+import gleam/option
 import gleam/result
 import gleeunit/should
+import glexif
 import glint
 import simplifile
+
+type MediaType {
+  Photo
+  Video
+}
+
+type Media {
+  Media(media_type: MediaType, caption: String, file_path: String, order: Int)
+}
 
 fn telegram_bot_token_flag() -> glint.Flag(String) {
   let flag =
@@ -102,6 +113,17 @@ fn create_telegram_gallery(logger) -> glint.Command(Nil) {
     |> result.map(fn(files) {
       list.map(files, fn(f) { io.println("file " <> f) })
       list.map(files, fn(f) { echo simplifile.file_info(f) })
+      list.map(files, fn(f) {
+        Media(
+          media_type: Photo,
+          caption: option.unwrap(
+            glexif.get_exif_data_for_file(f).image_description,
+            "",
+          ),
+          file_path: f,
+          order: 0,
+        )
+      })
     })
   Nil
 }
