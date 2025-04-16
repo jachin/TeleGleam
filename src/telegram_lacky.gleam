@@ -2,6 +2,7 @@ import argv
 import dot_env
 import dot_env/env
 import filepath
+import flash
 import gleam/hackney
 import gleam/http/request
 import gleam/http/response
@@ -74,13 +75,13 @@ fn is_media_file(path) {
   }
 }
 
-fn create_telegram_gallery() -> glint.Command(Nil) {
+fn create_telegram_gallery(logger) -> glint.Command(Nil) {
   use <- glint.command_help("Uploads a set of media to telegram")
   use channel <- glint.flag(channel_flag())
   use _, args, flags <- glint.command()
   let assert Ok(channel_name) = channel(flags)
 
-  io.println("Creating Telegram gallery..." <> channel_name)
+  flash.info(logger, "Creating Telegram gallery: " <> channel_name)
 
   let media_path = case args {
     [] -> "."
@@ -105,15 +106,15 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   Nil
 }
 
-fn telegram_send_message(bot_token: String, chat_id: String, message: String) {
-  io.println("telegram_send_message")
-
-  io.println("bot_token " <> bot_token)
-  io.println("chat_id " <> chat_id)
+fn telegram_send_message(
+  logger,
+  bot_token: String,
+  chat_id: String,
+  message: String,
+) {
+  flash.info(logger, "telegram_send_message")
 
   let url = "https://api.telegram.org/" <> bot_token <> "/sendMessage"
-
-  io.println("url " <> url)
 
   let assert Ok(base_req) = request.to(url)
 
@@ -124,40 +125,36 @@ fn telegram_send_message(bot_token: String, chat_id: String, message: String) {
     ])
     |> json.to_string
 
-  io.println("json_body " <> json_body)
+  flash.info(logger, "json_body " <> json_body)
 
   let req =
     request.set_header(base_req, "Content-Type", "application/json")
     |> request.set_body(json_body)
 
-  io.println("Request is setup")
+  flash.info(logger, "Request is setup")
 
   // Send the HTTP request to the server
   use resp <- result.try(hackney.send(req))
 
-  io.println("Request has been sent")
+  flash.info(logger, "Request has been sent")
 
   // Detailed error logging
-  io.println("Response status: " <> resp.status |> int.to_string)
-  io.println("Response body: " <> resp.body)
+  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
+  flash.info(logger, "Response body: " <> resp.body)
 
   // We get a response record back
   resp.status
   |> should.equal(200)
 
-  io.println("Request got back a 200")
-
   resp
   |> response.get_header("content-type")
   |> should.equal(Ok("application/json"))
 
-  io.println("Request Looks OK")
-
   Ok(resp)
 }
 
-fn post_simple_text_message() -> glint.Command(Nil) {
-  io.println("Posting a simple text message")
+fn post_simple_text_message(logger) -> glint.Command(Nil) {
+  flash.info(logger, "Posting a simple text message")
 
   use <- glint.command_help("Post a simple text message to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
@@ -171,9 +168,7 @@ fn post_simple_text_message() -> glint.Command(Nil) {
     [m, ..] -> Ok(m)
   }
 
-  io.println("Parsed message: '" <> message <> "'")
-
-  let _ = telegram_send_message(bot_token, chat_id, message)
+  let _ = telegram_send_message(logger, bot_token, chat_id, message)
 
   Nil
 }
@@ -184,12 +179,19 @@ pub fn main() {
   |> dot_env.set_debug(True)
   |> dot_env.load
 
-  io.println("ENV Loaded")
+  let logger = flash.new(flash.InfoLevel, flash.text_writer)
+
+  logger |> flash.info("ENV Loaded")
   glint.new()
   |> glint.with_name("telegram-lacky")
   |> glint.pretty_help(glint.default_pretty_help())
-  |> glint.add(at: [], do: create_telegram_gallery())
-  |> glint.add(at: ["create-telegram-gallery"], do: create_telegram_gallery())
-  |> glint.add(at: ["post-simple-text-message"], do: post_simple_text_message())
+  |> glint.add(
+    at: ["create-telegram-gallery"],
+    do: create_telegram_gallery(logger),
+  )
+  |> glint.add(
+    at: ["post-simple-text-message"],
+    do: post_simple_text_message(logger),
+  )
   |> glint.run(argv.load().arguments)
 }
