@@ -2,9 +2,10 @@ import argv
 import dot_env
 import dot_env/env
 import filepath
+import gleam/hackney
 import gleam/http/request
 import gleam/http/response
-import gleam/httpc
+import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
@@ -104,39 +105,60 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   Nil
 }
 
-fn telegram_send_message(bot_token, chat_id, message) {
-  let assert Ok(base_req) =
-    request.to("https://api.telegram.org/" <> bot_token <> "/sendMessage")
+fn telegram_send_message(bot_token: String, chat_id: String, message: String) {
+  io.println("telegram_send_message")
+
+  io.println("bot_token " <> bot_token)
+  io.println("chat_id " <> chat_id)
+
+  let url = "https://api.telegram.org/" <> bot_token <> "/sendMessage"
+
+  io.println("url " <> url)
+
+  let assert Ok(base_req) = request.to(url)
+
+  let json_body =
+    json.object([
+      #("chat_id", json.string(chat_id)),
+      #("text", json.string(message)),
+    ])
+    |> json.to_string
+
+  io.println("json_body " <> json_body)
 
   let req =
-    request.prepend_header(
-      base_req,
-      "Content-Type",
-      "application/json; charset=utf-8",
-    )
-    |> request.set_body(
-      json.object([
-        #("chat_id", json.string(chat_id)),
-        #("text", json.string(message)),
-      ])
-      |> json.to_string,
-    )
+    request.set_header(base_req, "Content-Type", "application/json")
+    |> request.set_body(json_body)
+
+  io.println("Request is setup")
 
   // Send the HTTP request to the server
-  use resp <- result.try(httpc.send(req))
+  use resp <- result.try(hackney.send(req))
+
+  io.println("Request has been sent")
+
+  // Detailed error logging
+  io.println("Response status: " <> resp.status |> int.to_string)
+  io.println("Response body: " <> resp.body)
 
   // We get a response record back
   resp.status
   |> should.equal(200)
 
+  io.println("Request got back a 200")
+
   resp
   |> response.get_header("content-type")
   |> should.equal(Ok("application/json"))
+
+  io.println("Request Looks OK")
 
   Ok(resp)
 }
 
 fn post_simple_text_message() -> glint.Command(Nil) {
+  io.println("Posting a simple text message")
+
   use <- glint.command_help("Post a simple text message to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
@@ -149,6 +171,8 @@ fn post_simple_text_message() -> glint.Command(Nil) {
     [m, ..] -> Ok(m)
   }
 
+  io.println("Parsed message: '" <> message <> "'")
+
   let _ = telegram_send_message(bot_token, chat_id, message)
 
   Nil
@@ -157,9 +181,10 @@ fn post_simple_text_message() -> glint.Command(Nil) {
 pub fn main() {
   dot_env.new()
   |> dot_env.set_path(".env")
-  |> dot_env.set_debug(False)
+  |> dot_env.set_debug(True)
   |> dot_env.load
 
+  io.println("ENV Loaded")
   glint.new()
   |> glint.with_name("telegram-lacky")
   |> glint.pretty_help(glint.default_pretty_help())
