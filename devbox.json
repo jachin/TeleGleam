@@ -1,11 +1,20 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.14.0/.schema/devbox.schema.json",
-  "packages": ["gleam@1", "erlang@27.2", "rebar3@latest"],
+  "packages": [
+    "gleam@1",
+    "erlang@27.2",
+    "rebar3@latest",
+    "esbuild@latest",
+    "nodejs@22"
+  ],
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"],
     "scripts": {
       "test": ["echo \"Error: no test specified\" && exit 1"],
-      "build": ["gleam build", "gleam run -m gleescript"]
+      "build": [
+        "gleam build",
+        "esbuild build/dev/javascript/telegram_lacky/gleam.main.mjs --bundle --platform=node --outfile=telegram_lacky.js"
+      ]
     }
   }
 }

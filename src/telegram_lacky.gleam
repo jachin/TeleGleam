@@ -3,19 +3,14 @@ import dot_env
 import dot_env/env
 import filepath
 import flash
-import gleam/hackney
-import gleam/http/request
-import gleam/http/response
-import gleam/int
 import gleam/io
-import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
-import gleeunit/should
 import glexif
 import glint
 import simplifile
+import telegram
 
 type MediaType {
   Photo
@@ -75,14 +70,19 @@ fn get_absolute_path(path) {
 }
 
 fn is_media_file(path) {
+  option.is_some(file_path_to_media_type(path))
+}
+
+fn file_path_to_media_type(path) {
   case filepath.extension(path) {
     Ok(extension) ->
       case extension {
-        "jpg" -> True
-        "jpeg" -> True
-        _ -> False
+        "jpg" -> option.Some(Photo)
+        "jpeg" -> option.Some(Photo)
+        "mp4" -> option.Some(Video)
+        _ -> option.None
       }
-    Error(_) -> False
+    Error(_) -> option.None
   }
 }
 
@@ -113,66 +113,22 @@ fn create_telegram_gallery(logger) -> glint.Command(Nil) {
     |> result.map(fn(files) {
       list.map(files, fn(f) { io.println("file " <> f) })
       list.map(files, fn(f) { echo simplifile.file_info(f) })
-      list.map(files, fn(f) {
-        Media(
-          media_type: Photo,
-          caption: option.unwrap(
-            glexif.get_exif_data_for_file(f).image_description,
-            "",
-          ),
-          file_path: f,
-          order: 0,
-        )
+      list.index_map(files, fn(f, i) {
+        file_path_to_media_type(f)
+        |> option.map(fn(media_type) {
+          Media(
+            media_type: media_type,
+            caption: option.unwrap(
+              glexif.get_exif_data_for_file(f).image_description,
+              "",
+            ),
+            file_path: f,
+            order: i,
+          )
+        })
       })
     })
   Nil
-}
-
-fn telegram_send_message(
-  logger,
-  bot_token: String,
-  chat_id: String,
-  message: String,
-) {
-  flash.info(logger, "telegram_send_message")
-
-  let url = "https://api.telegram.org/" <> bot_token <> "/sendMessage"
-
-  let assert Ok(base_req) = request.to(url)
-
-  let json_body =
-    json.object([
-      #("chat_id", json.string(chat_id)),
-      #("text", json.string(message)),
-    ])
-    |> json.to_string
-
-  flash.info(logger, "json_body " <> json_body)
-
-  let req =
-    request.set_header(base_req, "Content-Type", "application/json")
-    |> request.set_body(json_body)
-
-  flash.info(logger, "Request is setup")
-
-  // Send the HTTP request to the server
-  use resp <- result.try(hackney.send(req))
-
-  flash.info(logger, "Request has been sent")
-
-  // Detailed error logging
-  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-  flash.info(logger, "Response body: " <> resp.body)
-
-  // We get a response record back
-  resp.status
-  |> should.equal(200)
-
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
-
-  Ok(resp)
 }
 
 fn post_simple_text_message(logger) -> glint.Command(Nil) {
@@ -190,7 +146,7 @@ fn post_simple_text_message(logger) -> glint.Command(Nil) {
     [m, ..] -> Ok(m)
   }
 
-  let _ = telegram_send_message(logger, bot_token, chat_id, message)
+  let _ = telegram.send_message(logger, bot_token, chat_id, message)
 
   Nil
 }
