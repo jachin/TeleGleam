@@ -159,7 +159,7 @@ pub fn read_until_marker(
 ) -> Result(BitArray, file_stream_error.FileStreamError) {
   case file_stream.read_bytes(rs, 2) {
     Ok(bytes) -> {
-      let _ = case bytes {
+      case bytes {
         <<0xFF, 0xE1>> -> Ok(bytes)
         _ -> read_until_marker(rs)
       }

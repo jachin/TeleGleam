@@ -4,22 +4,11 @@ import dot_env/env
 import filepath
 import flash
 import gleam/io
-import gleam/list
-import gleam/option
 import gleam/result
-import glexif
 import glint
+import media
 import simplifile
 import telegram
-
-type MediaType {
-  Photo
-  Video
-}
-
-type Media {
-  Media(media_type: MediaType, caption: String, file_path: String, order: Int)
-}
 
 fn telegram_bot_token_flag() -> glint.Flag(String) {
   let flag =
@@ -69,23 +58,6 @@ fn get_absolute_path(path) {
   }
 }
 
-fn is_media_file(path) {
-  option.is_some(file_path_to_media_type(path))
-}
-
-fn file_path_to_media_type(path) {
-  case filepath.extension(path) {
-    Ok(extension) ->
-      case extension {
-        "jpg" -> option.Some(Photo)
-        "jpeg" -> option.Some(Photo)
-        "mp4" -> option.Some(Video)
-        _ -> option.None
-      }
-    Error(_) -> option.None
-  }
-}
-
 fn create_telegram_gallery(logger) -> glint.Command(Nil) {
   use <- glint.command_help("Uploads a set of media to telegram")
   use channel <- glint.flag(channel_flag())
@@ -106,28 +78,8 @@ fn create_telegram_gallery(logger) -> glint.Command(Nil) {
     Error(_) -> io.println("Something went wrong")
   }
 
-  let _ =
-    result.map(absolute_media_path, fn(p) { simplifile.get_files(p) })
-    |> result.flatten()
-    |> result.map(fn(files) { list.filter(files, is_media_file) })
-    |> result.map(fn(files) {
-      list.map(files, fn(f) { io.println("file " <> f) })
-      list.map(files, fn(f) { echo simplifile.file_info(f) })
-      list.index_map(files, fn(f, i) {
-        file_path_to_media_type(f)
-        |> option.map(fn(media_type) {
-          Media(
-            media_type: media_type,
-            caption: option.unwrap(
-              glexif.get_exif_data_for_file(f).image_description,
-              "",
-            ),
-            file_path: f,
-            order: i,
-          )
-        })
-      })
-    })
+  let _ = media.find_media(absolute_media_path)
+
   Nil
 }
 
