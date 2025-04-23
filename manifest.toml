@@ -23,6 +23,7 @@ packages = [
   { name = "gtui", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib"], otp_app = "gtui", source = "hex", outer_checksum = "B71092BDDEBACE07345B12E177B399BA3FA7E5A87E569C1049C2EAACEEA35BDD" },
   { name = "simplifile", version = "2.2.1", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "C88E0EE2D509F6D86EB55161D631657675AA7684DAB83822F7E59EB93D9A60E3" },
   { name = "snag", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "7E9F06390040EB5FAB392CE642771484136F2EC103A92AE11BA898C8167E6E17" },
+  { name = "teashop", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], source = "local", path = "../../Gleam/teashop" },
 ]
 
 [requirements]
@@ -41,3 +42,4 @@ gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glint = { version = ">= 1.2.1 and < 2.0.0" }
 gtui = { version = ">= 0.1.0 and < 1.0.0" }
 simplifile = { version = "~> 2.2" }
+teashop = { path = "../../Gleam/teashop" }
