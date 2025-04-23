@@ -64,7 +64,7 @@ pub fn find_media(absolute_media_path) {
   |> result.unwrap([])
 }
 
-pub fn get_selected_index(media: List(Media)) {
+pub fn get_selected(media: List(Media)) {
   media
   |> list.reduce(fn(acc, m) {
     case m.selected {
@@ -72,8 +72,27 @@ pub fn get_selected_index(media: List(Media)) {
       False -> acc
     }
   })
+}
+
+pub fn get_selected_order(media: List(Media)) {
+  media
+  |> get_selected
   |> result.map(fn(r) { r.order })
   |> result.unwrap(0)
+}
+
+pub fn get_selected_index(media: List(Media)) {
+  media
+  |> list.index_fold(-1, fn(acc, m, i) {
+    case acc >= 1 {
+      True -> acc
+      False ->
+        case m.selected {
+          True -> i
+          False -> acc
+        }
+    }
+  })
 }
 
 pub fn change_selected_index(media: List(Media), new_index: Int) {
@@ -110,4 +129,51 @@ pub fn move_selected_down(media: List(Media)) {
     False -> old_selected_index + 1
   }
   change_selected_index(media, new_selected_index)
+}
+
+pub fn move_selected_media_up(media: List(Media)) {
+  let current_selected_order = get_selected_order(media)
+  let item_or_to_swap_with = current_selected_order - 1
+  case current_selected_order {
+    0 -> media
+    _ ->
+      media
+      |> list.map(fn(m) {
+        case
+          m.order == current_selected_order,
+          m.order == item_or_to_swap_with
+        {
+          True, False -> Media(..m, order: item_or_to_swap_with)
+          False, True -> Media(..m, order: current_selected_order)
+          _, _ -> m
+        }
+      })
+      |> sort_media
+  }
+}
+
+pub fn move_selected_media_down(media: List(Media)) {
+  let current_selected_order = get_selected_order(media)
+  let item_or_to_swap_with = current_selected_order + 1
+  let max_index = list.length(media) - 1
+  case current_selected_order == max_index {
+    True -> media
+    False ->
+      media
+      |> list.map(fn(m) {
+        case
+          m.order == current_selected_order,
+          m.order == item_or_to_swap_with
+        {
+          True, False -> Media(..m, order: item_or_to_swap_with)
+          False, True -> Media(..m, order: current_selected_order)
+          _, _ -> m
+        }
+      })
+      |> sort_media
+  }
+}
+
+pub fn sort_media(media: List(Media)) {
+  media |> list.sort(fn(a: Media, b: Media) { int.compare(a.order, b.order) })
 }

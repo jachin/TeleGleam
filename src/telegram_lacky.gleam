@@ -77,6 +77,16 @@ pub fn update(model: Model, event) {
     event.Key(key.Char("j")) | event.Key(key.Down) -> {
       #(Model(media: media.move_selected_down(model.media)), command.none())
     }
+    event.Key(key.Char("a")) -> {
+      #(Model(media: media.move_selected_media_up(model.media)), command.none())
+    }
+    event.Key(key.Char("s")) -> {
+      #(
+        Model(media: media.move_selected_media_down(model.media)),
+        command.none(),
+      )
+    }
+
     _otherwise -> #(model, command.none())
   }
 }
