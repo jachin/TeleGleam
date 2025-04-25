@@ -5,6 +5,7 @@ import filepath
 import flash
 import gleam/io
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import glint
@@ -77,10 +78,10 @@ pub fn update(model: Model, event) {
     event.Key(key.Char("j")) | event.Key(key.Down) -> {
       #(Model(media: media.move_selected_down(model.media)), command.none())
     }
-    event.Key(key.Char("a")) -> {
+    event.Key(key.Char("K")) -> {
       #(Model(media: media.move_selected_media_up(model.media)), command.none())
     }
-    event.Key(key.Char("s")) -> {
+    event.Key(key.Char("J")) -> {
       #(
         Model(media: media.move_selected_media_down(model.media)),
         command.none(),
@@ -166,6 +167,30 @@ fn post_simple_text_message(logger) -> glint.Command(Nil) {
   Nil
 }
 
+fn upload_photo(logger) -> glint.Command(Nil) {
+  flash.info(logger, "Uploading a photo")
+
+  use <- glint.command_help("Upload a photo to Telegram")
+  use bot_token <- glint.flag(telegram_bot_token_flag())
+  use chat_id <- glint.flag(telegram_chat_id_flag())
+  use _, args, flags <- glint.command()
+  let assert Ok(bot_token) = bot_token(flags)
+  let assert Ok(chat_id) = chat_id(flags)
+
+  let assert Ok(photo_path) = case args {
+    [] -> Error("No photo path")
+    [p, ..] -> Ok(p)
+  }
+
+  let assert Ok(absolute_photo_path) = get_absolute_path(photo_path)
+
+  let assert option.Some(photo) = media.file_path_to_media(absolute_photo_path)
+
+  let _ = telegram.send_photo(logger, bot_token, chat_id, photo)
+
+  Nil
+}
+
 pub fn main() {
   dot_env.new()
   |> dot_env.set_path(".env")
@@ -186,5 +211,6 @@ pub fn main() {
     at: ["post-simple-text-message"],
     do: post_simple_text_message(logger),
   )
+  |> glint.add(at: ["upload-photo"], do: upload_photo(logger))
   |> glint.run(argv.load().arguments)
 }

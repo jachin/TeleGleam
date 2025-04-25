@@ -1,5 +1,7 @@
 import filepath
+import gleam/fetch/form_data
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
@@ -62,6 +64,22 @@ pub fn find_media(absolute_media_path) {
   })
   |> result.map(option.values)
   |> result.unwrap([])
+}
+
+pub fn file_path_to_media(path) {
+  file_path_to_media_type(path)
+  |> option.map(fn(media_type) {
+    Media(
+      media_type: media_type,
+      caption: option.unwrap(
+        glexif.get_exif_data_for_file(path).image_description,
+        "",
+      ),
+      file_path: path,
+      order: 0,
+      selected: True,
+    )
+  })
 }
 
 pub fn get_selected(media: List(Media)) {
@@ -176,4 +194,35 @@ pub fn move_selected_media_down(media: List(Media)) {
 
 pub fn sort_media(media: List(Media)) {
   media |> list.sort(fn(a: Media, b: Media) { int.compare(a.order, b.order) })
+}
+
+pub fn to_input_media_json(media: Media) {
+  json.object([
+    #("type", case media.media_type {
+      Photo -> json.string("photo")
+      Video -> json.string("video")
+    }),
+    #("caption", json.string(media.caption)),
+    #("media", json.string("attach://" <> filepath.base_name(media.file_path))),
+  ])
+}
+
+pub fn build_form_data_for_uploading(media: List(Media)) {
+  let media_data =
+    list.map(media, fn(m) {
+      simplifile.read_bits(m.file_path)
+      |> result.map(fn(media_bits) {
+        #(filepath.base_name(m.file_path), media_bits)
+      })
+    })
+  case result.all(media_data) {
+    Ok(media_data) ->
+      media_data
+      |> list.fold(form_data.new(), fn(media_form_data, data) {
+        let #(name, bits) = data
+        media_form_data |> form_data.append_bits(name, bits)
+      })
+      |> Ok
+    Error(error) -> Error(error)
+  }
 }
