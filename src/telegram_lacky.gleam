@@ -18,7 +18,12 @@ import teashop/key
 import telegram
 
 pub type Model {
-  Model(media: List(media.Media))
+  Model(
+    media: List(media.Media),
+    logger: flash.Logger,
+    bot_token: String,
+    chat_id: String,
+  )
 }
 
 fn telegram_bot_token_flag() -> glint.Flag(String) {
@@ -41,13 +46,6 @@ fn telegram_chat_id_flag() -> glint.Flag(String) {
     Ok(value) -> flag |> glint.flag_default(value)
     Error(_) -> flag
   }
-}
-
-fn channel_flag() -> glint.Flag(String) {
-  glint.string_flag("channel")
-  // what should the default channel me?
-  |> glint.flag_default("ME")
-  |> glint.flag_help("The channel to upload to")
 }
 
 fn get_absolute_path(path) {
@@ -73,18 +71,43 @@ pub fn update(model: Model, event) {
   case event {
     event.Key(key.Char("q")) | event.Key(key.Esc) -> #(model, command.quit())
     event.Key(key.Char("k")) | event.Key(key.Up) -> {
-      #(Model(media: media.move_selected_up(model.media)), command.none())
+      #(
+        Model(..model, media: media.move_selected_up(model.media)),
+        command.none(),
+      )
     }
     event.Key(key.Char("j")) | event.Key(key.Down) -> {
-      #(Model(media: media.move_selected_down(model.media)), command.none())
+      #(
+        Model(..model, media: media.move_selected_down(model.media)),
+        command.none(),
+      )
     }
     event.Key(key.Char("K")) -> {
-      #(Model(media: media.move_selected_media_up(model.media)), command.none())
+      #(
+        Model(..model, media: media.move_selected_media_up(model.media)),
+        command.none(),
+      )
     }
     event.Key(key.Char("J")) -> {
       #(
-        Model(media: media.move_selected_media_down(model.media)),
+        Model(..model, media: media.move_selected_media_down(model.media)),
         command.none(),
+      )
+    }
+
+    event.Key(key.Char("u")) -> {
+      #(
+        model,
+        command.from(fn(_) {
+          echo "Upload"
+          telegram.send_media_group(
+            model.logger,
+            model.bot_token,
+            model.chat_id,
+            model.media,
+          )
+          Nil
+        }),
       )
     }
 
@@ -111,11 +134,11 @@ pub fn view(model: Model) {
 
 fn create_telegram_gallery(logger) -> glint.Command(Nil) {
   use <- glint.command_help("Uploads a set of media to telegram")
-  use channel <- glint.flag(channel_flag())
+  use bot_token <- glint.flag(telegram_bot_token_flag())
+  use chat_id <- glint.flag(telegram_chat_id_flag())
   use _, args, flags <- glint.command()
-  let assert Ok(channel_name) = channel(flags)
-
-  flash.info(logger, "Creating Telegram gallery: " <> channel_name)
+  let assert Ok(bot_token) = bot_token(flags)
+  let assert Ok(chat_id) = chat_id(flags)
 
   let media_path = case args {
     [] -> "."
@@ -135,7 +158,12 @@ fn create_telegram_gallery(logger) -> glint.Command(Nil) {
     teashop.app(
       fn(_) {
         #(
-          Model(media: media.find_media(absolute_media_path)),
+          Model(
+            media: media.find_media(absolute_media_path),
+            logger: logger,
+            bot_token: bot_token,
+            chat_id: chat_id,
+          ),
           command.set_window_title("teashop"),
         )
       },

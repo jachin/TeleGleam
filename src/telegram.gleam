@@ -1,7 +1,6 @@
 import filepath
 import flash
 import gleam/fetch
-import gleam/fetch/form_data
 import gleam/http
 import gleam/http/request
 import gleam/http/response
@@ -41,38 +40,49 @@ pub fn send_message(logger, bot_token: String, chat_id: String, message: String)
   send_request(req, logger)
 }
 
-// pub fn send_media_group(
-//   logger,
-//   bot_token: String,
-//   chat_id: String,
-//   media: List(media.Media),
-// ) {
-//   flash.info(logger, "telegram_send_photo_group")
+pub fn send_media_group(
+  logger,
+  bot_token: String,
+  chat_id: String,
+  media_group: List(media.Media),
+) {
+  let json_body =
+    json.object([
+      #("chat_id", json.string(chat_id)),
+      #("media", json.array(media_group, media.to_input_media_json)),
+    ])
+    |> json.to_string
 
-//   let url = "https://api.telegram.org/" <> bot_token <> "/sendMediaGroup"
+  let assert Ok(form_data) =
+    media.build_form_data_for_uploading(chat_id, json_body, media_group)
 
-//   let json_body =
-//     json.object([
-//       #("chat_id", json.string(chat_id)),
-//       #("media", json.array(media, media.to_input_media_json)),
-//     ])
-//     |> json.to_string
+  let r =
+    request.new()
+    |> request.set_host("api.telegram.org")
+    |> request.set_path(bot_token <> "/sendMediaGroup")
+    |> request.set_method(http.Post)
+    |> request.set_scheme(http.Https)
+    |> multipart_form.to_request(form_data)
 
-//   flash.info(logger, "json_body " <> json_body)
+  use resp <- promise.try_await(fetch.send_bits(r))
+  use resp_body <- promise.try_await(fetch.read_text_body(resp))
 
-//   let assert Ok(base_req) = request.to(url)
+  flash.info(logger, "Request has been sent")
 
-//   let r = case media.build_form_data_for_uploading(media) {
-//     Ok(media_form_data) ->
-//       base_req
-//       |> request.set_method(http.Post)
-//       |> request.set_header("Content-Type", "application/json")
-//       |> request.set_body(json_body <> media_form_data)
-//     error -> error
-//   }
+  // Detailed error logging
+  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
+  flash.info(logger, "Response body: " <> resp_body.body)
 
-//   send_request(r, logger)
-// }
+  // We get a response record back
+  resp.status
+  |> should.equal(200)
+
+  resp
+  |> response.get_header("content-type")
+  |> should.equal(Ok("application/json"))
+
+  promise.resolve(Ok(resp))
+}
 
 pub fn send_photo(
   logger,
@@ -84,8 +94,14 @@ pub fn send_photo(
 
   let form = [
     #("chat_id", field.String(chat_id)),
-    #("bot", field.String(bot_token)),
-    #("photo", field.File("image.jpg", "image/jpeg", photo_bits)),
+    #(
+      "photo",
+      field.File(
+        filepath.base_name(photo.file_path),
+        media.media_to_mine_type(photo.media_type),
+        photo_bits,
+      ),
+    ),
   ]
 
   let photo_upload_request =

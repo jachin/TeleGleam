@@ -1,16 +1,23 @@
 import filepath
-import gleam/fetch/form_data
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
 import glexif
+import multipart_form/field
 import simplifile
 
 pub type MediaType {
-  Photo
+  Photo(PhotoFormat)
   Video
+}
+
+pub type PhotoFormat {
+  Jepg
+  Png
+  Gif
+  Webp
 }
 
 pub type Media {
@@ -27,8 +34,10 @@ fn file_path_to_media_type(path) {
   case filepath.extension(path) {
     Ok(extension) ->
       case extension {
-        "jpg" -> option.Some(Photo)
-        "jpeg" -> option.Some(Photo)
+        "jpg" -> option.Some(Photo(Jepg))
+        "jpeg" -> option.Some(Photo(Jepg))
+        "png" -> option.Some(Photo(Png))
+        "gif" -> option.Some(Photo(Gif))
         "mp4" -> option.Some(Video)
         _ -> option.None
       }
@@ -38,6 +47,32 @@ fn file_path_to_media_type(path) {
 
 fn is_media_file(path) {
   option.is_some(file_path_to_media_type(path))
+}
+
+pub fn media_to_mine_type(media_type: MediaType) {
+  case media_type {
+    Photo(format) ->
+      case format {
+        Jepg -> "image/jpeg"
+        Png -> "image/png"
+        Gif -> "image/gif"
+        Webp -> "image/webp"
+      }
+    Video -> "video/mp4"
+  }
+}
+
+pub fn media_type_to_telegram_media_type(media_type: MediaType) {
+  case media_type {
+    Photo(format) ->
+      case format {
+        Jepg -> "photo"
+        Png -> "photo"
+        Gif -> "photo"
+        Webp -> "photo"
+      }
+    Video -> "video"
+  }
 }
 
 pub fn find_media(absolute_media_path) {
@@ -199,7 +234,7 @@ pub fn sort_media(media: List(Media)) {
 pub fn to_input_media_json(media: Media) {
   json.object([
     #("type", case media.media_type {
-      Photo -> json.string("photo")
+      Photo(_) -> json.string("photo")
       Video -> json.string("video")
     }),
     #("caption", json.string(media.caption)),
@@ -207,21 +242,34 @@ pub fn to_input_media_json(media: Media) {
   ])
 }
 
-pub fn build_form_data_for_uploading(media: List(Media)) {
+pub fn build_form_data_for_uploading(
+  chat_id: String,
+  json_body: String,
+  media_group: List(Media),
+) {
   let media_data =
-    list.map(media, fn(m) {
+    list.map(media_group, fn(m) {
       simplifile.read_bits(m.file_path)
-      |> result.map(fn(media_bits) {
-        #(filepath.base_name(m.file_path), media_bits)
-      })
+      |> result.map(fn(media_bits) { #(m, media_bits) })
     })
   case result.all(media_data) {
     Ok(media_data) ->
       media_data
-      |> list.fold(form_data.new(), fn(media_form_data, data) {
-        let #(name, bits) = data
-        media_form_data |> form_data.append_bits(name, bits)
-      })
+      |> list.fold(
+        [#("chat_id", field.String(chat_id))],
+        fn(media_form_data, data) {
+          let #(media, bits) = data
+          let file_name = filepath.base_name(media.file_path)
+          let mine_type = media_to_mine_type(media.media_type)
+          list.append(media_form_data, [
+            #(
+              media_type_to_telegram_media_type(media.media_type),
+              field.File(file_name, mine_type, bits),
+            ),
+          ])
+        },
+      )
+      |> list.append([#("media", field.String(json_body))])
       |> Ok
     Error(error) -> Error(error)
   }

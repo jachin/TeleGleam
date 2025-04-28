@@ -9,21 +9,21 @@ pub fn main() {
 fn test_data() {
   [
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "red",
       file_path: "red.jpg",
       order: 0,
       selected: False,
     ),
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "blue",
       file_path: "blue.jpg",
       order: 1,
       selected: True,
     ),
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "gree",
       file_path: "green.jpg",
       order: 2,
@@ -55,21 +55,21 @@ pub fn move_selected_down_test() {
 pub fn sort_media_test() {
   let disordered_data = [
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "gree",
       file_path: "green.jpg",
       order: 2,
       selected: False,
     ),
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "blue",
       file_path: "blue.jpg",
       order: 1,
       selected: True,
     ),
     Media(
-      media_type: media.Photo,
+      media_type: media.Photo(media.Jepg),
       caption: "red",
       file_path: "red.jpg",
       order: 0,
