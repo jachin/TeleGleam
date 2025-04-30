@@ -99,7 +99,6 @@ pub fn update(model: Model, event) {
       #(
         model,
         command.from(fn(_) {
-          echo "Upload"
           telegram.send_media_group(
             model.logger,
             model.bot_token,

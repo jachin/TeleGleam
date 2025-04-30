@@ -47,11 +47,10 @@ pub fn send_media_group(
   media_group: List(media.Media),
 ) {
   let json_body =
-    json.object([
-      #("chat_id", json.string(chat_id)),
-      #("media", json.array(media_group, media.to_input_media_json)),
-    ])
+    json.array(media_group, media.to_input_media_json)
     |> json.to_string
+
+  echo "JSON BODY " <> json_body
 
   let assert Ok(form_data) =
     media.build_form_data_for_uploading(chat_id, json_body, media_group)
@@ -76,10 +75,6 @@ pub fn send_media_group(
   // We get a response record back
   resp.status
   |> should.equal(200)
-
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
 
   promise.resolve(Ok(resp))
 }

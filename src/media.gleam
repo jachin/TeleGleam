@@ -256,20 +256,19 @@ pub fn build_form_data_for_uploading(
     Ok(media_data) ->
       media_data
       |> list.fold(
-        [#("chat_id", field.String(chat_id))],
+        [
+          #("chat_id", field.String(chat_id)),
+          #("media", field.String(json_body)),
+        ],
         fn(media_form_data, data) {
           let #(media, bits) = data
           let file_name = filepath.base_name(media.file_path)
           let mine_type = media_to_mine_type(media.media_type)
           list.append(media_form_data, [
-            #(
-              media_type_to_telegram_media_type(media.media_type),
-              field.File(file_name, mine_type, bits),
-            ),
+            #(file_name, field.File(file_name, mine_type, bits)),
           ])
         },
       )
-      |> list.append([#("media", field.String(json_body))])
       |> Ok
     Error(error) -> Error(error)
   }
