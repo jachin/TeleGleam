@@ -9,6 +9,8 @@ import gleam/option
 import gleam/result
 import gleam/string
 import glint
+import glint/constraint
+import log_file_writer
 import media
 import simplifile
 import teashop
@@ -24,6 +26,26 @@ pub type Model {
     bot_token: telegram.BotToken,
     chat_id: telegram.ChatId,
   )
+}
+
+fn logger_level_flag() -> glint.Flag(String) {
+  glint.string_flag("logger-level")
+  |> glint.flag_help("The logger level")
+  |> glint.flag_constraint(
+    constraint.one_of([
+      flash.level_to_string(flash.DebugLevel),
+      flash.level_to_string(flash.InfoLevel),
+      flash.level_to_string(flash.WarnLevel),
+      flash.level_to_string(flash.ErrorLevel),
+    ]),
+  )
+  |> fn(flag) {
+    case env.get_string("LOGGER_LEVEL") {
+      Ok(value) -> flag |> glint.flag_default(value)
+      Error(_) ->
+        flag |> glint.flag_default(flash.level_to_string(flash.ErrorLevel))
+    }
+  }
 }
 
 fn telegram_bot_token_flag() -> glint.Flag(String) {
@@ -131,16 +153,19 @@ pub fn view(model: Model) {
   [header, media, footer] |> string.join("\n\n")
 }
 
-fn create_telegram_gallery(logger) -> glint.Command(Nil) {
+fn create_telegram_gallery() -> glint.Command(Nil) {
   use <- glint.command_help("Uploads a set of media to telegram")
   use bot_token_flag <- glint.flag(telegram_bot_token_flag())
   use chat_id_flag <- glint.flag(telegram_chat_id_flag())
+  use logger_level_flag <- glint.flag(logger_level_flag())
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token_flag(flags)
   let assert Ok(chat_id_string) = chat_id_flag(flags)
+  let assert Ok(logger_level_string) = logger_level_flag(flags)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
+  let logger = setup_logger_from_string(logger_level_string)
 
   let media_path = case args {
     [] -> "."
@@ -177,18 +202,21 @@ fn create_telegram_gallery(logger) -> glint.Command(Nil) {
   Nil
 }
 
-fn post_simple_text_message(logger) -> glint.Command(Nil) {
-  flash.info(logger, "Posting a simple text message")
-
+fn post_simple_text_message() -> glint.Command(Nil) {
   use <- glint.command_help("Post a simple text message to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
+  use logger_level_flag <- glint.flag(logger_level_flag())
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token(flags)
   let assert Ok(chat_id_string) = chat_id(flags)
+  let assert Ok(logger_level_string) = logger_level_flag(flags)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
+  let logger = setup_logger_from_string(logger_level_string)
+
+  flash.info(logger, "Posting a simple text message")
 
   let assert Ok(message) = case args {
     [] -> Error("No message")
@@ -200,18 +228,21 @@ fn post_simple_text_message(logger) -> glint.Command(Nil) {
   Nil
 }
 
-fn upload_photo(logger) -> glint.Command(Nil) {
-  flash.info(logger, "Uploading a photo")
-
+fn upload_photo() -> glint.Command(Nil) {
   use <- glint.command_help("Upload a photo to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
+  use logger_level_flag <- glint.flag(logger_level_flag())
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token(flags)
   let assert Ok(chat_id_string) = chat_id(flags)
+  let assert Ok(logger_level_string) = logger_level_flag(flags)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
+  let logger = setup_logger_from_string(logger_level_string)
+
+  flash.info(logger, "Uploading a photo")
 
   let assert Ok(photo_path) = case args {
     [] -> Error("No photo path")
@@ -227,25 +258,29 @@ fn upload_photo(logger) -> glint.Command(Nil) {
   Nil
 }
 
+fn setup_logger_from_string(logger_level_string) {
+  let logger_level = case flash.parse_level(logger_level_string) {
+    Ok(level) -> level
+    Error(_) -> flash.ErrorLevel
+  }
+  setup_logger(logger_level)
+}
+
+fn setup_logger(level) {
+  flash.new(level, log_file_writer.text_log_file_writer("log.txt"))
+}
+
 pub fn main() {
   dot_env.new()
   |> dot_env.set_path(".env")
   |> dot_env.set_debug(True)
   |> dot_env.load
 
-  let logger = flash.new(flash.InfoLevel, flash.text_writer)
-
   glint.new()
   |> glint.with_name("telegram-lacky")
   |> glint.pretty_help(glint.default_pretty_help())
-  |> glint.add(
-    at: ["create-telegram-gallery"],
-    do: create_telegram_gallery(logger),
-  )
-  |> glint.add(
-    at: ["post-simple-text-message"],
-    do: post_simple_text_message(logger),
-  )
-  |> glint.add(at: ["upload-photo"], do: upload_photo(logger))
+  |> glint.add(at: ["create-telegram-gallery"], do: create_telegram_gallery())
+  |> glint.add(at: ["post-simple-text-message"], do: post_simple_text_message())
+  |> glint.add(at: ["upload-photo"], do: upload_photo())
   |> glint.run(argv.load().arguments)
 }
