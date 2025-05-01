@@ -21,8 +21,8 @@ pub type Model {
   Model(
     media: List(media.Media),
     logger: flash.Logger,
-    bot_token: String,
-    chat_id: String,
+    bot_token: telegram.BotToken,
+    chat_id: telegram.ChatId,
   )
 }
 
@@ -133,11 +133,14 @@ pub fn view(model: Model) {
 
 fn create_telegram_gallery(logger) -> glint.Command(Nil) {
   use <- glint.command_help("Uploads a set of media to telegram")
-  use bot_token <- glint.flag(telegram_bot_token_flag())
-  use chat_id <- glint.flag(telegram_chat_id_flag())
+  use bot_token_flag <- glint.flag(telegram_bot_token_flag())
+  use chat_id_flag <- glint.flag(telegram_chat_id_flag())
   use _, args, flags <- glint.command()
-  let assert Ok(bot_token) = bot_token(flags)
-  let assert Ok(chat_id) = chat_id(flags)
+  let assert Ok(bot_token_string) = bot_token_flag(flags)
+  let assert Ok(chat_id_string) = chat_id_flag(flags)
+
+  let bot_token = telegram.BotToken(bot_token_string)
+  let chat_id = telegram.ChatId(chat_id_string)
 
   let media_path = case args {
     [] -> "."

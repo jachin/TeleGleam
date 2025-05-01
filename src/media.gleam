@@ -5,7 +5,6 @@ import gleam/list
 import gleam/option
 import gleam/result
 import glexif
-import multipart_form/field
 import simplifile
 
 pub type MediaType {
@@ -240,36 +239,4 @@ pub fn to_input_media_json(media: Media) {
     #("caption", json.string(media.caption)),
     #("media", json.string("attach://" <> filepath.base_name(media.file_path))),
   ])
-}
-
-pub fn build_form_data_for_uploading(
-  chat_id: String,
-  json_body: String,
-  media_group: List(Media),
-) {
-  let media_data =
-    list.map(media_group, fn(m) {
-      simplifile.read_bits(m.file_path)
-      |> result.map(fn(media_bits) { #(m, media_bits) })
-    })
-  case result.all(media_data) {
-    Ok(media_data) ->
-      media_data
-      |> list.fold(
-        [
-          #("chat_id", field.String(chat_id)),
-          #("media", field.String(json_body)),
-        ],
-        fn(media_form_data, data) {
-          let #(media, bits) = data
-          let file_name = filepath.base_name(media.file_path)
-          let mine_type = media_to_mine_type(media.media_type)
-          list.append(media_form_data, [
-            #(file_name, field.File(file_name, mine_type, bits)),
-          ])
-        },
-      )
-      |> Ok
-    Error(error) -> Error(error)
-  }
 }

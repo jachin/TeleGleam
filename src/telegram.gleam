@@ -7,11 +7,33 @@ import gleam/http/response
 import gleam/int
 import gleam/javascript/promise
 import gleam/json
+import gleam/list
+import gleam/result
 import gleeunit/should
 import media
 import multipart_form
 import multipart_form/field
 import simplifile
+
+pub type ChatId {
+  ChatId(String)
+}
+
+pub type BotToken {
+  BotToken(String)
+}
+
+fn chat_id_to_string(chat_id: ChatId) {
+  case chat_id {
+    ChatId(id) -> id
+  }
+}
+
+fn bot_token_to_string(bot_token: BotToken) {
+  case bot_token {
+    BotToken(token) -> token
+  }
+}
 
 pub fn send_message(logger, bot_token: String, chat_id: String, message: String) {
   flash.info(logger, "telegram_send_message")
@@ -42,23 +64,21 @@ pub fn send_message(logger, bot_token: String, chat_id: String, message: String)
 
 pub fn send_media_group(
   logger,
-  bot_token: String,
-  chat_id: String,
+  bot_token: BotToken,
+  chat_id: ChatId,
   media_group: List(media.Media),
 ) {
   let json_body =
     json.array(media_group, media.to_input_media_json)
     |> json.to_string
 
-  echo "JSON BODY " <> json_body
-
   let assert Ok(form_data) =
-    media.build_form_data_for_uploading(chat_id, json_body, media_group)
+    build_form_data_for_uploading(chat_id, json_body, media_group)
 
   let r =
     request.new()
     |> request.set_host("api.telegram.org")
-    |> request.set_path(bot_token <> "/sendMediaGroup")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/sendMediaGroup")
     |> request.set_method(http.Post)
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form_data)
@@ -147,4 +167,36 @@ fn send_request(req, logger) {
   |> should.equal(Ok("application/json"))
 
   promise.resolve(Ok(resp))
+}
+
+pub fn build_form_data_for_uploading(
+  chat_id: ChatId,
+  json_body: String,
+  media_group: List(media.Media),
+) {
+  let media_data =
+    list.map(media_group, fn(m) {
+      simplifile.read_bits(m.file_path)
+      |> result.map(fn(media_bits) { #(m, media_bits) })
+    })
+  case result.all(media_data) {
+    Ok(media_data) ->
+      media_data
+      |> list.fold(
+        [
+          #("chat_id", field.String(chat_id_to_string(chat_id))),
+          #("media", field.String(json_body)),
+        ],
+        fn(media_form_data, data) {
+          let #(media, bits) = data
+          let file_name = filepath.base_name(media.file_path)
+          let mine_type = media.media_to_mine_type(media.media_type)
+          list.append(media_form_data, [
+            #(file_name, field.File(file_name, mine_type, bits)),
+          ])
+        },
+      )
+      |> Ok
+    Error(error) -> Error(error)
+  }
 }
