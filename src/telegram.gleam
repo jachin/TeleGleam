@@ -16,16 +16,16 @@ import multipart_form/field
 import simplifile
 
 pub type ChatId {
-  ChatId(String)
+  ChatId(Int)
 }
 
 pub type BotToken {
   BotToken(String)
 }
 
-fn chat_id_to_string(chat_id: ChatId) {
+fn chat_id_to_string(chat_id: ChatId) -> String {
   case chat_id {
-    ChatId(id) -> id
+    ChatId(id) -> id |> int.to_string
   }
 }
 
@@ -35,16 +35,24 @@ fn bot_token_to_string(bot_token: BotToken) {
   }
 }
 
-pub fn send_message(logger, bot_token: String, chat_id: String, message: String) {
+pub fn send_message(
+  logger,
+  bot_token: BotToken,
+  chat_id: ChatId,
+  message: String,
+) {
   flash.info(logger, "telegram_send_message")
 
-  let url = "https://api.telegram.org/" <> bot_token <> "/sendMessage"
+  let url =
+    "https://api.telegram.org/"
+    <> bot_token_to_string(bot_token)
+    <> "/sendMessage"
 
   let assert Ok(base_req) = request.to(url)
 
   let json_body =
     json.object([
-      #("chat_id", json.string(chat_id)),
+      #("chat_id", json.string(chat_id_to_string(chat_id))),
       #("text", json.string(message)),
     ])
     |> json.to_string
@@ -101,14 +109,14 @@ pub fn send_media_group(
 
 pub fn send_photo(
   logger,
-  bot_token: String,
-  chat_id: String,
+  bot_token: BotToken,
+  chat_id: ChatId,
   photo: media.Media,
 ) {
   let assert Ok(photo_bits) = simplifile.read_bits(photo.file_path)
 
   let form = [
-    #("chat_id", field.String(chat_id)),
+    #("chat_id", field.String(chat_id_to_string(chat_id))),
     #(
       "photo",
       field.File(
@@ -122,7 +130,7 @@ pub fn send_photo(
   let photo_upload_request =
     request.new()
     |> request.set_host("api.telegram.org")
-    |> request.set_path(bot_token <> "/sendPhoto")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/sendPhoto")
     |> request.set_method(http.Post)
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form)

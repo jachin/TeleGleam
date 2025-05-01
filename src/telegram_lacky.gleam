@@ -37,12 +37,12 @@ fn telegram_bot_token_flag() -> glint.Flag(String) {
   }
 }
 
-fn telegram_chat_id_flag() -> glint.Flag(String) {
+fn telegram_chat_id_flag() -> glint.Flag(Int) {
   let flag =
-    glint.string_flag("telegram-chat-id")
+    glint.int_flag("telegram-chat-id")
     |> glint.flag_help("The Telegram Chat ID")
 
-  case env.get_string("TELEGRAM_CHAT_ID") {
+  case env.get_int("TELEGRAM_CHAT_ID") {
     Ok(value) -> flag |> glint.flag_default(value)
     Error(_) -> flag
   }
@@ -184,8 +184,11 @@ fn post_simple_text_message(logger) -> glint.Command(Nil) {
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
   use _, args, flags <- glint.command()
-  let assert Ok(bot_token) = bot_token(flags)
-  let assert Ok(chat_id) = chat_id(flags)
+  let assert Ok(bot_token_string) = bot_token(flags)
+  let assert Ok(chat_id_string) = chat_id(flags)
+
+  let bot_token = telegram.BotToken(bot_token_string)
+  let chat_id = telegram.ChatId(chat_id_string)
 
   let assert Ok(message) = case args {
     [] -> Error("No message")
@@ -204,8 +207,11 @@ fn upload_photo(logger) -> glint.Command(Nil) {
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
   use _, args, flags <- glint.command()
-  let assert Ok(bot_token) = bot_token(flags)
-  let assert Ok(chat_id) = chat_id(flags)
+  let assert Ok(bot_token_string) = bot_token(flags)
+  let assert Ok(chat_id_string) = chat_id(flags)
+
+  let bot_token = telegram.BotToken(bot_token_string)
+  let chat_id = telegram.ChatId(chat_id_string)
 
   let assert Ok(photo_path) = case args {
     [] -> Error("No photo path")
@@ -229,7 +235,6 @@ pub fn main() {
 
   let logger = flash.new(flash.InfoLevel, flash.text_writer)
 
-  logger |> flash.info("ENV Loaded")
   glint.new()
   |> glint.with_name("telegram-lacky")
   |> glint.pretty_help(glint.default_pretty_help())
