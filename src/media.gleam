@@ -79,7 +79,6 @@ pub fn find_media(absolute_media_path) {
   |> result.flatten()
   |> result.map(fn(files) { list.filter(files, is_media_file) })
   |> result.map(fn(files) {
-    list.map(files, fn(f) { echo simplifile.file_info(f) })
     list.index_map(files, fn(f, i) {
       file_path_to_media_type(f)
       |> option.map(fn(media_type) {

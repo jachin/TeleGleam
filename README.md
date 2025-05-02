@@ -22,3 +22,8 @@ devbox run build
 
 ```
 ## Dependencies
+
+In addition to the dependencies listed in `gleam.toml`, TeleGleam also depends on the following:
+
+- [glexif](https://github.com/justinrassier/glexif) for reading EXIF metadata from images and videos. I had to update a couple of things and make it compatiable with the JavaScript target.
+-
