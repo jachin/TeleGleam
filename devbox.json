@@ -13,7 +13,7 @@
       "test": ["echo \"Error: no test specified\" && exit 1"],
       "build": [
         "gleam build",
-        "esbuild build/dev/javascript/telegram_lacky/gleam.main.mjs --bundle --platform=node --outfile=telegram_lacky.js"
+        "esbuild build/dev/javascript/telegleam/gleam.main.mjs --bundle --platform=node --outfile=telegleam.js"
       ]
     }
   }

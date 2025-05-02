@@ -1,25 +1,24 @@
-# telegram_lacky
+# TeleGleam
 
-[![Package Version](https://img.shields.io/hexpm/v/telegram_lacky)](https://hex.pm/packages/telegram_lacky)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/telegram_lacky/)
+This a TUI that allows uses the [Telegram Bot API](https://core.telegram.org/bots/api) to make some tasks easier.
 
-```sh
-gleam add telegram_lacky@1
-```
-```gleam
-import telegram_lacky
+## The Motivation
 
-pub fn main() {
-  // TODO: An example of the project in use
-}
-```
-
-Further documentation can be found at <https://hexdocs.pm/telegram_lacky>.
+The main thing I wanted to be able to do was to create galleries in Telegram channels and the photos and videos would have captions based on metadate that was already in their files via [exif metadata](https://en.wikipedia.org/wiki/Exif).
 
 ## Development
 
+If you want to work on TeleGleam it's written in the [Gleam programming language](https://gleam-lang.org/) and then compiled to JavaScript.
+
+Setup [devbox](https://www.jetify.com/devbox)
+
 ```sh
-gleam run   # Run the project
-gleam test  # Run the tests
+devbox shell
+
+# build
+devbox run build
+
+# run
+
 ```
-# telegram_lacky_gleam
+## Dependencies
