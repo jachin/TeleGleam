@@ -18,8 +18,8 @@ const keyPress = {
  *
  * **It gets reused to save CPU usage and minimize GC.**
  */
-export function decodeKey(buffer, code) {
-  if (code[0] === "\x1b") code = code.slice(1);
+export function decodeKey(buffer, _code) {
+  let code = _code[0] === "\x1b" ? _code.slice(1) : _code;
   keyPress.buffer = buffer;
   keyPress.key = code;
   keyPress.ctrl = false;
@@ -59,7 +59,8 @@ export function decodeKey(buffer, code) {
           keyPress.shift = code !== code.toLowerCase();
           keyPress.meta = buffer[0] === 27;
           break;
-        } else if (buffer.length === 1) {
+        }
+        if (buffer.length === 1) {
           keyPress.key = "escape";
           break;
         }

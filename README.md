@@ -1,6 +1,6 @@
 # TeleGleam
 
-This a TUI that allows uses the [Telegram Bot API](https://core.telegram.org/bots/api) to make some tasks easier.
+This a [TUI](https://en.wikipedia.org/wiki/Text-based_user_interface) that uses the [Telegram Bot API](https://core.telegram.org/bots/api) to make posting things to [Telegram](https://telegram.org) easier (sometimes).
 
 ## The Motivation
 
@@ -10,7 +10,7 @@ The main thing I wanted to be able to do was to create galleries in Telegram cha
 
 If you want to work on TeleGleam it's written in the [Gleam programming language](https://gleam-lang.org/) and then compiled to JavaScript.
 
-Setup [devbox](https://www.jetify.com/devbox)
+The tooling is pretty straight forward but to make things even easier I have things setup with [devbox](https://www.jetify.com/devbox).
 
 ```sh
 devbox shell
@@ -24,7 +24,7 @@ node telegleam.js --help
 
 ## Dependencies
 
-In addition to the dependencies listed in `gleam.toml`, TeleGleam also depends on the following projects but they were either not avalible as packages or I had to modify them a bit:
+In addition to the dependencies listed in `gleam.toml`, TeleGleam also depends on the following projects but they were either not avalible as packages or I had to modify them a bit so the code has "vendored" into this code base (but not in an organized way):
 
 - [glexif](https://github.com/justinrassier/glexif) for reading EXIF metadata from images and videos. I had to update a couple of things and make it compatiable with the JavaScript target.
 - [teashop](https://github.com/erikareads/teashop) is a framework for building TUIs.
