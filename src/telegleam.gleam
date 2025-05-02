@@ -3,7 +3,6 @@ import dot_env
 import dot_env/env
 import filepath
 import flash
-import gleam/io
 import gleam/list
 import gleam/option
 import gleam/result

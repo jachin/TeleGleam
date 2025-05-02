@@ -24,7 +24,6 @@ packages = [
   { name = "multipart_form", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "multipart_form", source = "hex", outer_checksum = "700FEC9E7C82DB2EA3B048AC6C2869095560AB68EBDC97BF207E8DAD9BB3C022" },
   { name = "simplifile", version = "2.2.1", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "C88E0EE2D509F6D86EB55161D631657675AA7684DAB83822F7E59EB93D9A60E3" },
   { name = "snag", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "7E9F06390040EB5FAB392CE642771484136F2EC103A92AE11BA898C8167E6E17" },
-  { name = "teashop", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], source = "local", path = "../../Gleam/teashop" },
 ]
 
 [requirements]
@@ -45,4 +44,3 @@ glint = { version = ">= 1.2.1 and < 2.0.0" }
 gtui = { version = ">= 0.1.0 and < 1.0.0" }
 multipart_form = { version = ">= 1.0.0 and < 2.0.0" }
 simplifile = { version = "~> 2.2" }
-teashop = { path = "../../Gleam/teashop" }
