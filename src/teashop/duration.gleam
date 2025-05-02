@@ -3,7 +3,9 @@ pub opaque type Duration {
 }
 
 const seconds_to_milliseconds = 1000
+
 const minutes_to_milliseconds = 60_000
+
 const hours_to_milliseconds = 3_600_000
 
 pub fn milliseconds(n: Int) -> Duration {
