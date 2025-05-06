@@ -1,5 +1,7 @@
 import filepath
 import flash
+import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http
 import gleam/http/request
@@ -23,6 +25,28 @@ pub type BotToken {
   BotToken(String)
 }
 
+pub type ChatFullInfo {
+  ChatFullInfo(
+    id: ChatId,
+    chat_type: String,
+    title: String,
+    description: String,
+  )
+}
+
+fn chat_id_decoder() {
+  decode.int |> decode.map(ChatId)
+}
+
+fn chat_full_info_decoder() {
+  use id <- decode.subfield(["result", "id"], chat_id_decoder())
+  use chat_type <- decode.subfield(["result", "type"], decode.string)
+  use title <- decode.subfield(["result", "title"], decode.string)
+
+  use description <- decode.subfield(["result", "description"], decode.string)
+  decode.success(ChatFullInfo(id, chat_type, title, description))
+}
+
 fn chat_id_to_string(chat_id: ChatId) -> String {
   case chat_id {
     ChatId(id) -> id |> int.to_string
@@ -34,6 +58,98 @@ fn bot_token_to_string(bot_token: BotToken) {
     BotToken(token) -> token
   }
 }
+
+pub fn get_chat(
+  logger,
+  bot_token: BotToken,
+  chat_id: ChatId,
+) -> promise.Promise(Result(response.Response(ChatFullInfo), fetch.FetchError)) {
+  flash.info(logger, "get_chat")
+
+  let json_body =
+    json.object([#("chat_id", json.string(chat_id_to_string(chat_id)))])
+    |> json.to_string
+
+  let req =
+    request.new()
+    |> request.set_host("api.telegram.org")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/getChat")
+    |> request.set_method(http.Get)
+    |> request.set_scheme(http.Https)
+    |> request.set_header("Content-Type", "application/json")
+    |> request.set_query([#("chat_id", chat_id_to_string(chat_id))])
+    |> request.set_body(json_body)
+
+  // Send the HTTP request to the server
+
+  let foo1 = fetch.send(req)
+  let foo2: promise.Promise(
+    Result(response.Response(dynamic.Dynamic), fetch.FetchError),
+  ) = promise.try_await(foo1, fn(foo3) { fetch.read_json_body(foo3) })
+
+  promise.tap(foo2, fn(result) { echo result })
+
+  let foo4 =
+    promise.await(
+      foo2,
+      fn(
+        resp_result: Result(
+          response.Response(dynamic.Dynamic),
+          fetch.FetchError,
+        ),
+      ) {
+        promise.resolve(parse_chat_response(resp_result))
+      },
+    )
+
+  promise.tap(foo4, fn(result) { echo result })
+}
+
+fn parse_chat_response(
+  resp_result: Result(response.Response(dynamic.Dynamic), fetch.FetchError),
+) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
+  case resp_result {
+    Ok(resp) -> {
+      let a =
+        response.try_map(resp, fn(json_body) {
+          decode.run(json_body, chat_full_info_decoder())
+        })
+
+      do_the_thing(a)
+    }
+    Error(error) -> Error(error)
+  }
+}
+
+fn do_the_thing(
+  a: Result(response.Response(ChatFullInfo), List(decode.DecodeError)),
+) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
+  case a {
+    Ok(resp) -> {
+      Ok(resp)
+    }
+    Error(err) -> {
+      echo err
+      Error(fetch.InvalidJsonBody)
+    }
+  }
+}
+
+// {
+//   let bar3 = case resp_result {
+//     Ok(resp) ->
+//       let bar4 = response.try_map(resp, fn(json_body) {
+//         decode.run(json_body, chat_full_info_decoder())
+//       })
+//       let bar5 = case bar4 {
+//         Ok(chat_full_info) -> Ok(chat_full_info)
+//         Err(error) -> Err(error)
+//       }
+//       bar5
+//     error -> error
+//   }
+//   promise.resolve(bar3)
+// }
 
 pub fn send_message(
   logger,
