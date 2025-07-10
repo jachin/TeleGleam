@@ -29,9 +29,7 @@ import glexif/internal/orientation as internal_orientation
 
 import glexif/internal/utils
 import glexif/units/fraction.{type Fraction, Fraction}
-import glexif/units/gps_coordinates.{
-  type GPSCoordinates, GPSCoordinates, InvalidGPSCoordinates,
-}
+import glexif/units/gps_coordinates.{GPSCoordinates, InvalidGPSCoordinates}
 
 pub type ExifParseError {
   BadHeaders(message: String)

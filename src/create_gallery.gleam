@@ -1,5 +1,4 @@
 import flash
-import gleam/javascript/promise
 import gleam/list
 import gleam/string
 import media
@@ -7,6 +6,10 @@ import teashop/command
 import teashop/event
 import teashop/key
 import telegram
+
+pub type Msg {
+  GetChatInfoResponse(chat_info: telegram.ChatFullInfo)
+}
 
 pub type Model {
   Model(
@@ -43,12 +46,6 @@ pub fn update(model: Model, event) {
         Model(..model, media: media.move_selected_media_down(model.media)),
         command.none(),
       )
-    }
-
-    event.Key(key.Char("i")) -> {
-      telegram.get_chat(model.logger, model.bot_token, model.chat_id)
-
-      #(model, command.none())
     }
 
     event.Key(key.Char("u")) -> {
