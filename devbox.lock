@@ -102,8 +102,8 @@
       "resolved": "github:NixOS/nixpkgs/9b008d60392981ad674e04016d25619281550a9d?lastModified=1751949589&narHash=sha256-mgFxAPLWw0Kq%2BC8P3dRrZrOYEQXOtKuYVlo9xvPntt8%3D"
     },
     "gleam@1": {
-      "last_modified": "2025-07-06T07:15:37Z",
-      "resolved": "github:NixOS/nixpkgs/ceb24d94c6feaa4e8737a8e2bd3cf71c3a7eaaa0#gleam",
+      "last_modified": "2025-07-08T04:39:49Z",
+      "resolved": "github:NixOS/nixpkgs/9b008d60392981ad674e04016d25619281550a9d#gleam",
       "source": "devbox-search",
       "version": "1.11.1",
       "systems": {
@@ -111,41 +111,41 @@
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/0np4ja1dnkm266kzgyfz1qqwlmavywy3-gleam-1.11.1",
+              "path": "/nix/store/y52lmv1wlg2cfhcrns3zypayfm52xks8-gleam-1.11.1",
               "default": true
             }
           ],
-          "store_path": "/nix/store/0np4ja1dnkm266kzgyfz1qqwlmavywy3-gleam-1.11.1"
+          "store_path": "/nix/store/y52lmv1wlg2cfhcrns3zypayfm52xks8-gleam-1.11.1"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/1l1xzn534mxl7s260s9angf4xbqal9zw-gleam-1.11.1",
+              "path": "/nix/store/dh1mgbw94c9r0g2lpv02dw92ggxaxxrg-gleam-1.11.1",
               "default": true
             }
           ],
-          "store_path": "/nix/store/1l1xzn534mxl7s260s9angf4xbqal9zw-gleam-1.11.1"
+          "store_path": "/nix/store/dh1mgbw94c9r0g2lpv02dw92ggxaxxrg-gleam-1.11.1"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/c4x9j67mykvrm3d0qsqk5a42nh3vssvl-gleam-1.11.1",
+              "path": "/nix/store/7vi9pcn9baczn0abvyixm043gc7gy1c4-gleam-1.11.1",
               "default": true
             }
           ],
-          "store_path": "/nix/store/c4x9j67mykvrm3d0qsqk5a42nh3vssvl-gleam-1.11.1"
+          "store_path": "/nix/store/7vi9pcn9baczn0abvyixm043gc7gy1c4-gleam-1.11.1"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/akhndx2psjrvrppdw3yv33827r7hifcw-gleam-1.11.1",
+              "path": "/nix/store/flgd2fpkawkbfb7m3mwrsyqw58mw8grx-gleam-1.11.1",
               "default": true
             }
           ],
-          "store_path": "/nix/store/akhndx2psjrvrppdw3yv33827r7hifcw-gleam-1.11.1"
+          "store_path": "/nix/store/flgd2fpkawkbfb7m3mwrsyqw58mw8grx-gleam-1.11.1"
         }
       }
     },
