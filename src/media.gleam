@@ -4,7 +4,6 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
-import glexif
 import simplifile
 
 pub type MediaType {
@@ -84,10 +83,11 @@ pub fn find_media(absolute_media_path) {
       |> option.map(fn(media_type) {
         Media(
           media_type: media_type,
-          caption: option.unwrap(
-            glexif.get_exif_data_for_file(f).image_description,
-            "",
-          ),
+          // caption: option.unwrap(
+          //   glexif.get_exif_data_for_file(f).image_description,
+          //   "",
+          // ),
+          caption: "",
           file_path: f,
           order: i,
           selected: i == 0,
@@ -104,10 +104,11 @@ pub fn file_path_to_media(path) {
   |> option.map(fn(media_type) {
     Media(
       media_type: media_type,
-      caption: option.unwrap(
-        glexif.get_exif_data_for_file(path).image_description,
-        "",
-      ),
+      // caption: option.unwrap(
+      //   glexif.get_exif_data_for_file(path).image_description,
+      //   "",
+      // ),
+      caption: "",
       file_path: path,
       order: 0,
       selected: True,
