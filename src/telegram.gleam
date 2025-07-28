@@ -1,14 +1,15 @@
 import filepath
-import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/http/response
+import gleam/httpc
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/result
 import gleeunit/should
+import logging
 import media
 import multipart_form
 import multipart_form/field
@@ -30,293 +31,228 @@ pub type ChatFullInfo {
     description: String,
   )
 }
-// fn chat_id_decoder() {
-//   decode.int |> decode.map(ChatId)
-// }
 
-// fn chat_full_info_decoder() {
-//   use id <- decode.subfield(["result", "id"], chat_id_decoder())
-//   use chat_type <- decode.subfield(["result", "type"], decode.string)
-//   use title <- decode.subfield(["result", "title"], decode.string)
+pub type TelegramRequestError {
+  TelegramRequestError(httpc.HttpError)
+  TelegramResponseError(json.DecodeError)
+  TelegramInvalidUriError
+}
 
-//   use description <- decode.subfield(["result", "description"], decode.string)
-//   decode.success(ChatFullInfo(id, chat_type, title, description))
-// }
+fn chat_id_decoder() {
+  decode.int |> decode.map(ChatId)
+}
 
-// fn chat_id_to_string(chat_id: ChatId) -> String {
-//   case chat_id {
-//     ChatId(id) -> id |> int.to_string
-//   }
-// }
+fn chat_full_info_decoder() {
+  use id <- decode.subfield(["result", "id"], chat_id_decoder())
+  use chat_type <- decode.subfield(["result", "type"], decode.string)
+  use title <- decode.subfield(["result", "title"], decode.string)
 
-// fn bot_token_to_string(bot_token: BotToken) {
-//   case bot_token {
-//     BotToken(token) -> token
-//   }
-// }
+  use description <- decode.subfield(["result", "description"], decode.string)
+  decode.success(ChatFullInfo(id, chat_type, title, description))
+}
 
-// pub fn get_chat(
-//   logger,
-//   bot_token: BotToken,
-//   chat_id: ChatId,
-// ) -> promise.Promise(Result(response.Response(ChatFullInfo), fetch.FetchError)) {
-//   flash.info(logger, "get_chat")
+fn chat_id_to_string(chat_id: ChatId) -> String {
+  case chat_id {
+    ChatId(id) -> id |> int.to_string
+  }
+}
 
-//   let json_body =
-//     json.object([#("chat_id", json.string(chat_id_to_string(chat_id)))])
-//     |> json.to_string
+fn bot_token_to_string(bot_token: BotToken) {
+  case bot_token {
+    BotToken(token) -> token
+  }
+}
 
-//   let req =
-//     request.new()
-//     |> request.set_host("api.telegram.org")
-//     |> request.set_path(bot_token_to_string(bot_token) <> "/getChat")
-//     |> request.set_method(http.Get)
-//     |> request.set_scheme(http.Https)
-//     |> request.set_header("Content-Type", "application/json")
-//     |> request.set_query([#("chat_id", chat_id_to_string(chat_id))])
-//     |> request.set_body(json_body)
+pub fn get_chat(
+  bot_token: BotToken,
+  chat_id: ChatId,
+) -> Result(ChatFullInfo, TelegramRequestError) {
+  logging.log(logging.Info, "get_chat")
 
-//   // Send the HTTP request to the server
+  let json_body =
+    json.object([#("chat_id", json.string(chat_id_to_string(chat_id)))])
+    |> json.to_string
 
-//   let foo1 = fetch.send(req)
-//   let foo2: promise.Promise(
-//     Result(response.Response(dynamic.Dynamic), fetch.FetchError),
-//   ) = promise.try_await(foo1, fn(foo3) { fetch.read_json_body(foo3) })
+  let req =
+    request.new()
+    |> request.set_host("api.telegram.org")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/getChat")
+    |> request.set_method(http.Get)
+    |> request.set_scheme(http.Https)
+    |> request.set_header("Content-Type", "application/json")
+    |> request.set_query([#("chat_id", chat_id_to_string(chat_id))])
+    |> request.set_body(json_body)
 
-//   promise.tap(foo2, fn(result) { echo result })
+  // Send the HTTP request to the server
+  use resp <- result.try(
+    result.map_error(httpc.send(req), fn(e) { TelegramRequestError(e) }),
+  )
+  use chat <- result.try(
+    json.parse(resp.body, chat_full_info_decoder())
+    |> result.map_error(fn(e) { TelegramResponseError(e) }),
+  )
 
-//   let foo4 =
-//     promise.await(
-//       foo2,
-//       fn(
-//         resp_result: Result(
-//           response.Response(dynamic.Dynamic),
-//           fetch.FetchError,
-//         ),
-//       ) {
-//         promise.resolve(parse_chat_response(resp_result))
-//       },
-//     )
+  Ok(chat)
+}
 
-//   promise.tap(foo4, fn(result) { echo result })
-// }
+pub fn send_message(bot_token: BotToken, chat_id: ChatId, message: String) {
+  logging.log(logging.Info, "telegram_send_message")
 
-// fn parse_chat_response(
-//   resp_result: Result(response.Response(dynamic.Dynamic), fetch.FetchError),
-// ) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
-//   case resp_result {
-//     Ok(resp) -> {
-//       let a =
-//         response.try_map(resp, fn(json_body) {
-//           decode.run(json_body, chat_full_info_decoder())
-//         })
+  let url =
+    "https://api.telegram.org/"
+    <> bot_token_to_string(bot_token)
+    <> "/sendMessage"
 
-//       do_the_thing(a)
-//     }
-//     Error(error) -> Error(error)
-//   }
-// }
+  let assert Ok(base_req) = request.to(url)
 
-// fn do_the_thing(
-//   a: Result(response.Response(ChatFullInfo), List(decode.DecodeError)),
-// ) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
-//   case a {
-//     Ok(resp) -> {
-//       Ok(resp)
-//     }
-//     Error(err) -> {
-//       echo err
-//       Error(fetch.InvalidJsonBody)
-//     }
-//   }
-// }
+  let json_body =
+    json.object([
+      #("chat_id", json.string(chat_id_to_string(chat_id))),
+      #("text", json.string(message)),
+    ])
+    |> json.to_string
 
-// // {
-// //   let bar3 = case resp_result {
-// //     Ok(resp) ->
-// //       let bar4 = response.try_map(resp, fn(json_body) {
-// //         decode.run(json_body, chat_full_info_decoder())
-// //       })
-// //       let bar5 = case bar4 {
-// //         Ok(chat_full_info) -> Ok(chat_full_info)
-// //         Err(error) -> Err(error)
-// //       }
-// //       bar5
-// //     error -> error
-// //   }
-// //   promise.resolve(bar3)
-// // }
+  logging.log(logging.Info, "json_body " <> json_body)
 
-// pub fn send_message(
-//   logger,
-//   bot_token: BotToken,
-//   chat_id: ChatId,
-//   message: String,
-// ) {
-//   flash.info(logger, "telegram_send_message")
+  let req =
+    base_req
+    |> request.set_method(http.Post)
+    |> request.set_header("Content-Type", "application/json")
+    |> request.set_body(json_body)
 
-//   let url =
-//     "https://api.telegram.org/"
-//     <> bot_token_to_string(bot_token)
-//     <> "/sendMessage"
+  logging.log(logging.Info, "Request is setup")
 
-//   let assert Ok(base_req) = request.to(url)
+  send_request(req)
+}
 
-//   let json_body =
-//     json.object([
-//       #("chat_id", json.string(chat_id_to_string(chat_id))),
-//       #("text", json.string(message)),
-//     ])
-//     |> json.to_string
+pub fn send_media_group(
+  bot_token: BotToken,
+  chat_id: ChatId,
+  media_group: List(media.Media),
+) {
+  let json_body =
+    json.array(media_group, media.to_input_media_json)
+    |> json.to_string
 
-//   flash.info(logger, "json_body " <> json_body)
+  let assert Ok(form_data) =
+    build_form_data_for_uploading(chat_id, json_body, media_group)
 
-//   let req =
-//     base_req
-//     |> request.set_method(http.Post)
-//     |> request.set_header("Content-Type", "application/json")
-//     |> request.set_body(json_body)
+  let r =
+    request.new()
+    |> request.set_host("api.telegram.org")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/sendMediaGroup")
+    |> request.set_method(http.Post)
+    |> request.set_scheme(http.Https)
+    |> multipart_form.to_request(form_data)
 
-//   flash.info(logger, "Request is setup")
+  use resp <- result.try(httpc.send_bits(r))
 
-//   send_request(req, logger)
-// }
+  logging.log(logging.Info, "Request has been sent")
 
-// pub fn send_media_group(
-//   logger,
-//   bot_token: BotToken,
-//   chat_id: ChatId,
-//   media_group: List(media.Media),
-// ) {
-//   let json_body =
-//     json.array(media_group, media.to_input_media_json)
-//     |> json.to_string
+  // Detailed error logging
+  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
+  //logging.log(logging.Info, "Response body: " <> resp_body.body)
 
-//   let assert Ok(form_data) =
-//     build_form_data_for_uploading(chat_id, json_body, media_group)
+  // We get a response record back
+  resp.status
+  |> should.equal(200)
 
-//   let r =
-//     request.new()
-//     |> request.set_host("api.telegram.org")
-//     |> request.set_path(bot_token_to_string(bot_token) <> "/sendMediaGroup")
-//     |> request.set_method(http.Post)
-//     |> request.set_scheme(http.Https)
-//     |> multipart_form.to_request(form_data)
+  Ok(resp)
+}
 
-//   use resp <- promise.try_await(fetch.send_bits(r))
-//   use resp_body <- promise.try_await(fetch.read_text_body(resp))
+pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
+  let assert Ok(photo_bits) = simplifile.read_bits(photo.file_path)
 
-//   flash.info(logger, "Request has been sent")
+  let form = [
+    #("chat_id", field.String(chat_id_to_string(chat_id))),
+    #(
+      "photo",
+      field.File(
+        filepath.base_name(photo.file_path),
+        media.media_to_mine_type(photo.media_type),
+        photo_bits,
+      ),
+    ),
+  ]
 
-//   // Detailed error logging
-//   flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-//   flash.info(logger, "Response body: " <> resp_body.body)
+  let photo_upload_request =
+    request.new()
+    |> request.set_host("api.telegram.org")
+    |> request.set_path(bot_token_to_string(bot_token) <> "/sendPhoto")
+    |> request.set_method(http.Post)
+    |> request.set_scheme(http.Https)
+    |> multipart_form.to_request(form)
 
-//   // We get a response record back
-//   resp.status
-//   |> should.equal(200)
+  use resp <- result.try(httpc.send_bits(photo_upload_request))
 
-//   promise.resolve(Ok(resp))
-// }
+  logging.log(logging.Info, "Request has been sent")
 
-// pub fn send_photo(
-//   logger,
-//   bot_token: BotToken,
-//   chat_id: ChatId,
-//   photo: media.Media,
-// ) {
-//   let assert Ok(photo_bits) = simplifile.read_bits(photo.file_path)
+  // Detailed error logging
+  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
+  //logging.log(logging.Info, "Response body: " <> resp.body)
 
-//   let form = [
-//     #("chat_id", field.String(chat_id_to_string(chat_id))),
-//     #(
-//       "photo",
-//       field.File(
-//         filepath.base_name(photo.file_path),
-//         media.media_to_mine_type(photo.media_type),
-//         photo_bits,
-//       ),
-//     ),
-//   ]
+  // We get a response record back
+  resp.status
+  |> should.equal(200)
 
-//   let photo_upload_request =
-//     request.new()
-//     |> request.set_host("api.telegram.org")
-//     |> request.set_path(bot_token_to_string(bot_token) <> "/sendPhoto")
-//     |> request.set_method(http.Post)
-//     |> request.set_scheme(http.Https)
-//     |> multipart_form.to_request(form)
+  resp
+  |> response.get_header("content-type")
+  |> should.equal(Ok("application/json"))
 
-//   use resp <- promise.try_await(fetch.send_bits(photo_upload_request))
-//   use resp_body <- promise.try_await(fetch.read_text_body(resp))
+  Ok(resp)
+}
 
-//   flash.info(logger, "Request has been sent")
+fn send_request(req) {
+  // Send the HTTP request to the server
+  use resp <- result.try(
+    httpc.send(req) |> result.map_error(fn(e) { TelegramRequestError(e) }),
+  )
 
-//   // Detailed error logging
-//   flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-//   flash.info(logger, "Response body: " <> resp_body.body)
+  logging.log(logging.Info, "Request has been sent")
 
-//   // We get a response record back
-//   resp.status
-//   |> should.equal(200)
+  // Detailed error logging
+  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
+  logging.log(logging.Info, "Response body: " <> resp.body)
 
-//   resp
-//   |> response.get_header("content-type")
-//   |> should.equal(Ok("application/json"))
+  // We get a response record back
+  resp.status
+  |> should.equal(200)
 
-//   promise.resolve(Ok(resp))
-// }
+  resp
+  |> response.get_header("content-type")
+  |> should.equal(Ok("application/json"))
 
-// fn send_request(req, logger) {
-//   // Send the HTTP request to the server
-//   use resp <- promise.try_await(fetch.send(req))
-//   use resp_body <- promise.try_await(fetch.read_text_body(resp))
+  Ok(resp)
+}
 
-//   flash.info(logger, "Request has been sent")
-
-//   // Detailed error logging
-//   flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-//   flash.info(logger, "Response body: " <> resp_body.body)
-
-//   // We get a response record back
-//   resp.status
-//   |> should.equal(200)
-
-//   resp
-//   |> response.get_header("content-type")
-//   |> should.equal(Ok("application/json"))
-
-//   promise.resolve(Ok(resp))
-// }
-
-// pub fn build_form_data_for_uploading(
-//   chat_id: ChatId,
-//   json_body: String,
-//   media_group: List(media.Media),
-// ) {
-//   let media_data =
-//     list.map(media_group, fn(m) {
-//       simplifile.read_bits(m.file_path)
-//       |> result.map(fn(media_bits) { #(m, media_bits) })
-//     })
-//   case result.all(media_data) {
-//     Ok(media_data) ->
-//       media_data
-//       |> list.fold(
-//         [
-//           #("chat_id", field.String(chat_id_to_string(chat_id))),
-//           #("media", field.String(json_body)),
-//         ],
-//         fn(media_form_data, data) {
-//           let #(media, bits) = data
-//           let file_name = filepath.base_name(media.file_path)
-//           let mine_type = media.media_to_mine_type(media.media_type)
-//           list.append(media_form_data, [
-//             #(file_name, field.File(file_name, mine_type, bits)),
-//           ])
-//         },
-//       )
-//       |> Ok
-//     Error(error) -> Error(error)
-//   }
-// }
+pub fn build_form_data_for_uploading(
+  chat_id: ChatId,
+  json_body: String,
+  media_group: List(media.Media),
+) {
+  let media_data =
+    list.map(media_group, fn(m) {
+      simplifile.read_bits(m.file_path)
+      |> result.map(fn(media_bits) { #(m, media_bits) })
+    })
+  case result.all(media_data) {
+    Ok(media_data) ->
+      media_data
+      |> list.fold(
+        [
+          #("chat_id", field.String(chat_id_to_string(chat_id))),
+          #("media", field.String(json_body)),
+        ],
+        fn(media_form_data, data) {
+          let #(media, bits) = data
+          let file_name = filepath.base_name(media.file_path)
+          let mine_type = media.media_to_mine_type(media.media_type)
+          list.append(media_form_data, [
+            #(file_name, field.File(file_name, mine_type, bits)),
+          ])
+        },
+      )
+      |> Ok
+    Error(error) -> Error(error)
+  }
+}

@@ -1,4 +1,5 @@
 import gleam/erlang/process
+import gleam/list
 import gleam/option.{Some}
 import harbinger
 import media
@@ -46,9 +47,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
 }
 
 pub fn view(model: Model) {
-  ui.box([ui.text("Hello!")], Some("TeleGleam"))
+  ui.box(
+    [
+      ui.table(
+        style.Pct(100),
+        model.media |> list.map(fn(m) { [m.caption, m.file_path] }),
+      ),
+    ],
+    Some("TeleGleam"),
+  )
   |> ui.align(style.Center, _)
-  |> layout.center(style.Px(50), style.Px(12))
+  |> layout.center(style.Pct(80), style.Pct(80))
 }
 
 pub fn main(

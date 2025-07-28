@@ -1,9 +1,12 @@
 import filepath
+
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
+
+import exiftool_caller
 import simplifile
 
 pub type MediaType {
@@ -37,6 +40,7 @@ fn file_path_to_media_type(path) {
         "png" -> option.Some(Photo(Png))
         "gif" -> option.Some(Photo(Gif))
         "mp4" -> option.Some(Video)
+        "mov" -> option.Some(Video)
         _ -> option.None
       }
     Error(_) -> option.None
@@ -83,11 +87,11 @@ pub fn find_media(absolute_media_path) {
       |> option.map(fn(media_type) {
         Media(
           media_type: media_type,
-          // caption: option.unwrap(
-          //   glexif.get_exif_data_for_file(f).image_description,
-          //   "",
-          // ),
-          caption: "",
+          caption: option.unwrap(
+            exiftool_caller.get_media_file_metadata(f)
+              |> exiftool_caller.get_description,
+            "",
+          ),
           file_path: f,
           order: i,
           selected: i == 0,
@@ -104,11 +108,11 @@ pub fn file_path_to_media(path) {
   |> option.map(fn(media_type) {
     Media(
       media_type: media_type,
-      // caption: option.unwrap(
-      //   glexif.get_exif_data_for_file(path).image_description,
-      //   "",
-      // ),
-      caption: "",
+      caption: option.unwrap(
+        exiftool_caller.get_media_file_metadata(path)
+          |> exiftool_caller.get_description,
+        "",
+      ),
       file_path: path,
       order: 0,
       selected: True,

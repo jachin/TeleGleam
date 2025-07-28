@@ -5,7 +5,9 @@
     "erlang@27.2",
     "rebar3@latest",
     "esbuild@latest",
-    "nodejs@22"
+    "nodejs@22",
+    "erlang-ls@latest",
+    "elixir@latest"
   ],
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"],
