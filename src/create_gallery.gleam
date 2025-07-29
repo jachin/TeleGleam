@@ -1,7 +1,6 @@
 import gleam/erlang/process
 import gleam/list
 import gleam/option.{Some}
-import harbinger
 import media
 import shore
 import shore/layout
@@ -19,20 +18,17 @@ pub type Msg {
 pub type Model {
   Model(
     media: List(media.Media),
-    logger: harbinger.Harbinger,
     bot_token: telegram.BotToken,
     chat_id: telegram.ChatId,
   )
 }
 
 fn init(
-  logger: harbinger.Harbinger,
   bot_token: telegram.BotToken,
   chat_id: telegram.ChatId,
   media: List(media.Media),
 ) -> fn() -> #(Model, List(fn() -> Msg)) {
-  let model =
-    Model(media: media, logger: logger, bot_token: bot_token, chat_id: chat_id)
+  let model = Model(media: media, bot_token: bot_token, chat_id: chat_id)
   let cmds = []
   fn() { #(model, cmds) }
 }
@@ -61,7 +57,6 @@ pub fn view(model: Model) {
 }
 
 pub fn main(
-  logger: harbinger.Harbinger,
   bot_token: telegram.BotToken,
   chat_id: telegram.ChatId,
   media: List(media.Media),
@@ -69,7 +64,7 @@ pub fn main(
   let exit = process.new_subject()
   let assert Ok(_actor) =
     shore.spec(
-      init: init(logger, bot_token, chat_id, media),
+      init: init(bot_token, chat_id, media),
       update:,
       view:,
       exit:,

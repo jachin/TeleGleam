@@ -13,24 +13,20 @@ import logging
 import media
 import simplifile
 import telegram
+import utils/logging as utils_logging
 
 fn logger_level_flag() -> glint.Flag(String) {
   glint.string_flag("logger-level")
   |> glint.flag_help("The logger level")
   |> glint.flag_constraint(
-    constraint.one_of([
-      harbinger.level_to_string(harbinger.DebugLevel),
-      harbinger.level_to_string(harbinger.InfoLevel),
-      harbinger.level_to_string(harbinger.WarningLevel),
-      harbinger.level_to_string(harbinger.ErrorLevel),
-    ]),
+    constraint.one_of(utils_logging.log_levels_as_strings()),
   )
   |> fn(flag) {
     case env.get_string("LOGGER_LEVEL") {
       Ok(value) -> flag |> glint.flag_default(value)
       Error(_) ->
         flag
-        |> glint.flag_default(harbinger.level_to_string(harbinger.ErrorLevel))
+        |> glint.flag_default(utils_logging.log_level_to_string(logging.Error))
     }
   }
 }
@@ -87,12 +83,12 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   let assert Ok(logger_level) =
     logger_level_flag(flags)
     |> result.map_error(fn(_) { "" })
-    |> result.try(harbinger.string_to_level)
+    |> result.try(utils_logging.parse_string_to_log_level)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  let logger = harbinger.new_file_logger(logger_level, "log.txt")
-  harbinger.info(logger, "Create Telegram Gallery")
+  logging.set_level(logger_level)
+  logging.log(logging.Info, "Create Telegram Gallery")
 
   let media_path = case args {
     [] -> "."
@@ -102,7 +98,7 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   let absolute_media_path = get_absolute_path(media_path)
 
   let media = media.find_media(absolute_media_path)
-  create_gallery.main(logger, bot_token, chat_id, media)
+  create_gallery.main(bot_token, chat_id, media)
 }
 
 fn post_simple_text_message() -> glint.Command(Nil) {
