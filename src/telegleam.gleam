@@ -118,13 +118,33 @@ fn post_simple_text_message() -> glint.Command(Nil) {
   let chat_id = telegram.ChatId(chat_id_string)
 
   logging.log(logging.Info, "Posting a simple text message")
+  telegram.log_bot_token(bot_token, logging.Info)
 
   let assert Ok(message) = case args {
     [] -> Error("No message")
     [m, ..] -> Ok(m)
   }
 
-  let _ = telegram.send_message(bot_token, chat_id, message)
+  let response_result = telegram.send_message(bot_token, chat_id, message)
+
+  let _ = case response_result {
+    Ok(_) -> {
+      Nil
+    }
+    Error(e) -> {
+      case e {
+        telegram.TelegramResponseError(_) -> {
+          logging.log(logging.Error, "TelegramResponseError")
+        }
+        telegram.TelegramRequestError(_) -> {
+          logging.log(logging.Error, "TelegramRequestError")
+        }
+        telegram.TelegramInvalidUriError -> {
+          logging.log(logging.Error, "TelegramInvalidUriError")
+        }
+      }
+    }
+  }
 
   Nil
 }
@@ -165,7 +185,8 @@ pub fn main() {
   |> dot_env.set_debug(True)
   |> dot_env.load
 
-  ffi.enable_file_logger("log.txt")
+  logging.configure()
+  //ffi.enable_file_logger("log.txt")
 
   glint.new()
   |> glint.with_name("telegleam")

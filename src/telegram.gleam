@@ -63,6 +63,10 @@ fn bot_token_to_string(bot_token: BotToken) {
   }
 }
 
+pub fn log_bot_token(bot_token: BotToken, level: logging.LogLevel) {
+  logging.log(level, "bot_token: " <> bot_token_to_string(bot_token))
+}
+
 pub fn get_chat(
   bot_token: BotToken,
   chat_id: ChatId,
@@ -203,26 +207,35 @@ pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
 }
 
 fn send_request(req) {
+  logging.log(logging.Info, "Send a request")
+
   // Send the HTTP request to the server
-  use resp <- result.try(
-    httpc.send(req) |> result.map_error(fn(e) { TelegramRequestError(e) }),
-  )
+  let resp_result =
+    httpc.send(req) |> result.map_error(fn(e) { TelegramRequestError(e) })
 
-  logging.log(logging.Info, "Request has been sent")
+  case resp_result {
+    Ok(resp) -> {
+      logging.log(logging.Info, "Request has been sent")
 
-  // Detailed error logging
-  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
-  logging.log(logging.Info, "Response body: " <> resp.body)
+      // Detailed error logging
+      logging.log(
+        logging.Info,
+        "Response status: " <> resp.status |> int.to_string,
+      )
+      logging.log(logging.Info, "Response body: " <> resp.body)
 
-  // We get a response record back
-  resp.status
-  |> should.equal(200)
+      // We get a response record back
+      resp.status
+      |> should.equal(200)
 
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
+      resp
+      |> response.get_header("content-type")
+      |> should.equal(Ok("application/json"))
+    }
+    Error(_) -> logging.log(logging.Error, "Request has failed")
+  }
 
-  Ok(resp)
+  resp_result
 }
 
 pub fn build_form_data_for_uploading(
