@@ -2,13 +2,12 @@ import argv
 import create_gallery
 import dot_env
 import dot_env/env
-import ffi
 import filepath
 import gleam/option
 import gleam/result
+import glight
 import glint
 import glint/constraint
-import harbinger
 import logging
 import media
 import simplifile
@@ -181,7 +180,9 @@ pub fn main() {
   |> dot_env.set_debug(True)
   |> dot_env.load
 
-  logging.configure()
+  glight.configure([glight.File("log.txt")])
+  glight.set_log_level(glight.Debug)
+
   //ffi.enable_file_logger("log.txt")
 
   glint.new()

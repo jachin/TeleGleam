@@ -1,18 +1,35 @@
 import gleam/erlang/process
+import gleam/http/response
+import gleam/httpc
 import gleam/list
 import gleam/option.{Some}
+import glight.{info, logger}
+import logging
 import media
 import shore
+import shore/key
 import shore/layout
 import shore/style
 import shore/ui
 import telegram
 
+pub fn upload_gallery(
+  bot_token: telegram.BotToken,
+  chat_id: telegram.ChatId,
+  media: List(media.Media),
+) -> fn() -> Msg {
+  logger() |> info("upload_gallery")
+  fn() {
+    telegram.send_media_group(bot_token, chat_id, media)
+    |> UploadGalleryResponse
+  }
+}
+
 pub type Msg {
   RequestFileMetaData
   ReceivedFileMetaData
   UploadGallery
-  UploadGalleryResponse
+  UploadGalleryResponse(Result(response.Response(BitArray), httpc.HttpError))
 }
 
 pub type Model {
@@ -28,6 +45,12 @@ fn init(
   chat_id: telegram.ChatId,
   media: List(media.Media),
 ) -> fn() -> #(Model, List(fn() -> Msg)) {
+  glight.configure([glight.File("log.txt")])
+  glight.set_log_level(glight.Debug)
+  logger() |> info("setting the create_gallery")
+
+  logging.log(logging.Debug, "we can also log from the logging moduel")
+
   let model = Model(media: media, bot_token: bot_token, chat_id: chat_id)
   let cmds = []
   fn() { #(model, cmds) }
@@ -38,7 +61,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
     RequestFileMetaData -> #(model, [])
     ReceivedFileMetaData -> #(model, [])
     UploadGallery -> #(model, [])
-    UploadGalleryResponse -> #(model, [])
+    UploadGalleryResponse(_) -> #(model, [])
   }
 }
 
@@ -49,6 +72,7 @@ pub fn view(model: Model) {
         style.Pct(100),
         model.media |> list.map(fn(m) { [m.caption, m.file_path] }),
       ),
+      ui.button("Send", key.Ctrl("S"), UploadGallery),
     ],
     Some("TeleGleam"),
   )
