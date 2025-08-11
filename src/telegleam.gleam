@@ -146,15 +146,20 @@ fn upload_photo() -> glint.Command(Nil) {
   use <- glint.command_help("Upload a photo to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
-  // use logger_level_flag <- glint.flag(logger_level_flag())
+  use logger_level_flag <- glint.flag(logger_level_flag())
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token(flags)
   let assert Ok(chat_id_string) = chat_id(flags)
-  // let assert Ok(logger_level_string) = logger_level_flag(flags)
+  let assert Ok(logger_level) =
+    logger_level_flag(flags)
+    |> result.map_error(fn(_) { "" })
+    |> result.try(utils_logging.parse_string_to_log_level)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  // let logger = setup_logger_from_string(logger_level_string)
+  glight.configure([glight.File("log.txt")])
+  glight.set_log_level(logger_level)
+  glight.logger() |> glight.info("starting the upload_photo command")
 
   logging.log(logging.Info, "Uploading a photo")
 
