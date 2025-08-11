@@ -18,8 +18,8 @@ pub fn upload_gallery(
   chat_id: telegram.ChatId,
   media: List(media.Media),
 ) -> fn() -> Msg {
-  logger() |> info("upload_gallery")
   fn() {
+    logger() |> info("upload_gallery")
     telegram.send_media_group(bot_token, chat_id, media)
     |> UploadGalleryResponse
   }
@@ -45,11 +45,7 @@ fn init(
   chat_id: telegram.ChatId,
   media: List(media.Media),
 ) -> fn() -> #(Model, List(fn() -> Msg)) {
-  glight.configure([glight.File("log.txt")])
-  glight.set_log_level(glight.Debug)
-  logger() |> info("setting the create_gallery")
-
-  logging.log(logging.Debug, "we can also log from the logging moduel")
+  logging.log(logging.Debug, "Initialzing the create gallery app")
 
   let model = Model(media: media, bot_token: bot_token, chat_id: chat_id)
   let cmds = []
@@ -60,7 +56,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
   case msg {
     RequestFileMetaData -> #(model, [])
     ReceivedFileMetaData -> #(model, [])
-    UploadGallery -> #(model, [])
+    UploadGallery -> {
+      logging.log(logging.Debug, "update UploadGallery")
+      #(model, [])
+    }
     UploadGalleryResponse(_) -> #(model, [])
   }
 }
@@ -72,7 +71,7 @@ pub fn view(model: Model) {
         style.Pct(100),
         model.media |> list.map(fn(m) { [m.caption, m.file_path] }),
       ),
-      ui.button("Send", key.Ctrl("S"), UploadGallery),
+      ui.button("Send", key.Ctrl("s"), UploadGallery),
     ],
     Some("TeleGleam"),
   )
@@ -81,10 +80,14 @@ pub fn view(model: Model) {
 }
 
 pub fn main(
+  logger_level: glight.LogLevel,
   bot_token: telegram.BotToken,
   chat_id: telegram.ChatId,
   media: List(media.Media),
 ) {
+  glight.configure([glight.File("log.txt")])
+  glight.set_log_level(logger_level)
+  logger() |> info("starting the create_gallery app")
   let exit = process.new_subject()
   let assert Ok(_actor) =
     shore.spec(
@@ -93,7 +96,7 @@ pub fn main(
       view:,
       exit:,
       keybinds: shore.default_keybinds(),
-      redraw: shore.on_timer(16),
+      redraw: shore.on_update(),
     )
     |> shore.start
   exit |> process.receive_forever

@@ -25,7 +25,7 @@ fn logger_level_flag() -> glint.Flag(String) {
       Ok(value) -> flag |> glint.flag_default(value)
       Error(_) ->
         flag
-        |> glint.flag_default(utils_logging.log_level_to_string(logging.Error))
+        |> glint.flag_default(utils_logging.log_level_to_string(glight.Error))
     }
   }
 }
@@ -86,8 +86,6 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  logging.set_level(logger_level)
-  logging.log(logging.Info, "Create Telegram Gallery")
 
   let media_path = case args {
     [] -> "."
@@ -97,7 +95,7 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   let absolute_media_path = get_absolute_path(media_path)
 
   let media = media.find_media(absolute_media_path)
-  create_gallery.main(bot_token, chat_id, media)
+  create_gallery.main(logger_level, bot_token, chat_id, media)
 }
 
 fn post_simple_text_message() -> glint.Command(Nil) {

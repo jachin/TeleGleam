@@ -2,12 +2,12 @@
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.14.0/.schema/devbox.schema.json",
   "packages": [
     "gleam@1",
-    "erlang@27.2",
     "rebar3@latest",
     "esbuild@latest",
     "nodejs@22",
     "erlang-ls@latest",
-    "elixir@latest"
+    "elixir@latest",
+    "erlang_28@latest"
   ],
   "shell": {
     "init_hook": ["echo 'Welcome to devbox!' > /dev/null"],
