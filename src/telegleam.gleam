@@ -172,6 +172,8 @@ fn upload_photo() -> glint.Command(Nil) {
 
   let assert option.Some(photo) = media.file_path_to_media(absolute_photo_path)
 
+  media.log_media(glight.Info, photo, "photo to upload")
+
   let _ = telegram.send_photo(bot_token, chat_id, photo)
 
   Nil
@@ -182,11 +184,6 @@ pub fn main() {
   |> dot_env.set_path(".env")
   |> dot_env.set_debug(True)
   |> dot_env.load
-
-  glight.configure([glight.File("log.txt")])
-  glight.set_log_level(glight.Debug)
-
-  //ffi.enable_file_logger("log.txt")
 
   glint.new()
   |> glint.with_name("telegleam")

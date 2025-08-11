@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/list
 import gleam/string
 import glight
@@ -43,4 +44,37 @@ pub fn log_levels_as_strings() {
     ],
     log_level_to_string,
   )
+}
+
+pub fn log(
+  logger: dict.Dict(String, String),
+  level: glight.LogLevel,
+  message: String,
+) {
+  case level {
+    glight.Emergency -> {
+      glight.emergency(logger, message)
+    }
+    glight.Alert -> {
+      glight.alert(logger, message)
+    }
+    glight.Critical -> {
+      glight.critical(logger, message)
+    }
+    glight.Error -> {
+      glight.error(logger, message)
+    }
+    glight.Warning -> {
+      glight.warning(logger, message)
+    }
+    glight.Notice -> {
+      glight.notice(logger, message)
+    }
+    glight.Info -> {
+      glight.info(logger, message)
+    }
+    glight.Debug -> {
+      glight.debug(logger, message)
+    }
+  }
 }

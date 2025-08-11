@@ -9,6 +9,7 @@ import gleam/json
 import gleam/list
 import gleam/result
 import gleeunit/should
+import glight
 import logging
 import media
 import multipart_form
@@ -151,7 +152,7 @@ pub fn send_media_group(
 
   use resp <- result.try(httpc.send_bits(r))
 
-  logging.log(logging.Info, "Request has been sent")
+  glight.logger() |> glight.info("Request has been sent")
 
   // Detailed error logging
   logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
@@ -165,6 +166,7 @@ pub fn send_media_group(
 }
 
 pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
+  glight.logger() |> glight.info("send_photo")
   let assert Ok(photo_bits) = simplifile.read_bits(photo.file_path)
 
   let form = [
@@ -187,27 +189,36 @@ pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form)
 
-  use resp <- result.try(httpc.send_bits(photo_upload_request))
+  glight.logger() |> glight.info("send_photo request is ready")
 
-  logging.log(logging.Info, "Request has been sent")
+  case
+    httpc.dispatch_bits(
+      httpc.configure() |> httpc.timeout(5000),
+      photo_upload_request,
+    )
+  {
+    Ok(response) -> {
+      glight.logger() |> glight.info("Request has been sent")
+      Ok(response)
+    }
+    Error(error) -> {
+      glight.logger() |> glight.error("Request failed")
 
-  // Detailed error logging
-  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
-  //logging.log(logging.Info, "Response body: " <> resp.body)
-
-  // We get a response record back
-  resp.status
-  |> should.equal(200)
-
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
-
-  Ok(resp)
+      case error {
+        httpc.InvalidUtf8Response ->
+          glight.logger() |> glight.error("InvalidUtf8Response")
+        httpc.FailedToConnect(_, _) ->
+          glight.logger() |> glight.error("FailedToConnect")
+        httpc.ResponseTimeout ->
+          glight.logger() |> glight.error("ResponseTimeout")
+      }
+      Error(TelegramRequestError(error))
+    }
+  }
 }
 
 fn send_request(req) {
-  logging.log(logging.Info, "Send a request")
+  glight.logger() |> glight.info("Send a request")
 
   // Send the HTTP request to the server
   let resp_result =
@@ -215,14 +226,13 @@ fn send_request(req) {
 
   case resp_result {
     Ok(resp) -> {
-      logging.log(logging.Info, "Request has been sent")
+      glight.logger() |> glight.info("Request has been sent")
 
       // Detailed error logging
-      logging.log(
-        logging.Info,
-        "Response status: " <> resp.status |> int.to_string,
-      )
-      logging.log(logging.Info, "Response body: " <> resp.body)
+      glight.logger()
+      |> glight.info("Response status: " <> resp.status |> int.to_string)
+
+      glight.logger() |> glight.info("Response body: " <> resp.body)
 
       // We get a response record back
       resp.status
@@ -232,7 +242,10 @@ fn send_request(req) {
       |> response.get_header("content-type")
       |> should.equal(Ok("application/json"))
     }
-    Error(_) -> logging.log(logging.Error, "Request has failed")
+    Error(_) -> {
+      glight.logger() |> glight.error("Request has failed")
+      Nil
+    }
   }
 
   resp_result

@@ -5,6 +5,8 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
+import glight
+import utils/logging as utils_logging
 
 import exiftool_caller
 import simplifile
@@ -243,4 +245,13 @@ pub fn to_input_media_json(media: Media) {
     #("caption", json.string(media.caption)),
     #("media", json.string("attach://" <> filepath.base_name(media.file_path))),
   ])
+}
+
+pub fn log_media(level: glight.LogLevel, media: Media, msg: String) {
+  utils_logging.log(
+    glight.logger()
+      |> glight.with("file_path", media.file_path),
+    level,
+    msg,
+  )
 }
