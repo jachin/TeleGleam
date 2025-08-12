@@ -3,6 +3,7 @@ import create_gallery
 import dot_env
 import dot_env/env
 import filepath
+import gleam/io
 import gleam/option
 import gleam/result
 import glight
@@ -160,11 +161,12 @@ fn upload_photo() -> glint.Command(Nil) {
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
+
+  // Setup the logger
   glight.configure([glight.File("log.txt")])
   glight.set_log_level(logger_level)
-  glight.logger() |> glight.info("starting the upload_photo command")
 
-  logging.log(logging.Info, "Uploading a photo")
+  glight.logger() |> glight.info("starting the upload_photo command")
 
   let assert Ok(photo_path) = case args {
     [] -> Error("No photo path")
@@ -177,8 +179,16 @@ fn upload_photo() -> glint.Command(Nil) {
 
   media.log_media(glight.Info, photo, "photo to upload")
 
-  let _ = telegram.send_photo(bot_token, chat_id, photo)
-
+  case telegram.send_photo(bot_token, chat_id, photo) {
+    Ok(_) -> {
+      glight.logger() |> glight.info("Photo uploaded")
+    }
+    Error(_) -> {
+      glight.logger() |> glight.error("Photo upload FAILD")
+    }
+  }
+  io.print("upload_photo command completed")
+  glight.logger() |> glight.info("upload_photo command completed")
   Nil
 }
 

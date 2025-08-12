@@ -1,7 +1,20 @@
 import gleam/dict
+import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/string
 import glight
+
+pub type LoggerState =
+  Dynamic
+
+@external(erlang, "logger_preserve_ffi", "save_state")
+pub fn save_state() -> LoggerState
+
+@external(erlang, "logger_preserve_ffi", "restore_state")
+pub fn restore_state(state: LoggerState) -> Nil
+
+@external(erlang, "logger_preserve_ffi", "with_preserved_state")
+pub fn with_preserved_state(f: fn() -> a) -> a
 
 pub fn parse_string_to_log_level(str: String) -> Result(glight.LogLevel, String) {
   case string.uppercase(str) {
