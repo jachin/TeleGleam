@@ -250,7 +250,8 @@ pub fn to_input_media_json(media: Media) {
 pub fn log_media(level: glight.LogLevel, media: Media, msg: String) {
   utils_logging.log(
     glight.logger()
-      |> glight.with("file_path", media.file_path),
+      |> glight.with("file_path", media.file_path)
+      |> glight.with("caption", media.caption),
     level,
     msg,
   )

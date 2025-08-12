@@ -97,6 +97,9 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
 
   let media = media.find_media(absolute_media_path)
   create_gallery.main(logger_level, bot_token, chat_id, media)
+
+  //This is here so the logs can clear.
+  process.sleep(100)
 }
 
 fn post_simple_text_message() -> glint.Command(Nil) {
@@ -142,6 +145,9 @@ fn post_simple_text_message() -> glint.Command(Nil) {
       }
     }
   }
+
+  //This is here so the logs can clear.
+  process.sleep(100)
 
   Nil
 }
