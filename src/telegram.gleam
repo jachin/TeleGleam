@@ -1,5 +1,7 @@
 import filepath
+import gleam/bytes_tree
 import gleam/dynamic/decode
+import gleam/hackney
 import gleam/http
 import gleam/http/request
 import gleam/http/response
@@ -35,6 +37,7 @@ pub type ChatFullInfo {
 
 pub type TelegramRequestError {
   TelegramRequestError(httpc.HttpError)
+  TelegramRequestHackneyError(hackney.Error)
   TelegramResponseError(json.DecodeError)
   TelegramInvalidUriError
 }
@@ -192,9 +195,8 @@ pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
   glight.logger() |> glight.info("send_photo request is ready")
 
   case
-    httpc.dispatch_bits(
-      httpc.configure() |> httpc.timeout(5000),
-      photo_upload_request,
+    hackney.send_bits(
+      photo_upload_request |> request.map(bytes_tree.from_bit_array),
     )
   {
     Ok(response) -> {
@@ -205,14 +207,12 @@ pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
       glight.logger() |> glight.error("Request failed")
 
       case error {
-        httpc.InvalidUtf8Response ->
+        hackney.InvalidUtf8Response ->
           glight.logger() |> glight.error("InvalidUtf8Response")
-        httpc.FailedToConnect(_, _) ->
-          glight.logger() |> glight.error("FailedToConnect")
-        httpc.ResponseTimeout ->
-          glight.logger() |> glight.error("ResponseTimeout")
+        hackney.Other(_) ->
+          glight.logger() |> glight.error("Some other kind of error")
       }
-      Error(TelegramRequestError(error))
+      Error(TelegramRequestHackneyError(error))
     }
   }
 }

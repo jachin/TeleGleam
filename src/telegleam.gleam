@@ -129,6 +129,9 @@ fn post_simple_text_message() -> glint.Command(Nil) {
         telegram.TelegramResponseError(_) -> {
           logging.log(logging.Error, "TelegramResponseError")
         }
+        telegram.TelegramRequestHackneyError(_) -> {
+          logging.log(logging.Error, "TelegramRequestHackneyError")
+        }
         telegram.TelegramRequestError(_) -> {
           logging.log(logging.Error, "TelegramRequestError")
         }
