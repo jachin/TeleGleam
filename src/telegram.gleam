@@ -17,7 +17,6 @@ import media
 import multipart_form
 import multipart_form/field
 import simplifile
-import utils/logging as utils_logging
 
 pub type ChatId {
   ChatId(Int)
@@ -195,13 +194,12 @@ pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
 
   glight.logger() |> glight.info("send_photo request is ready")
 
-  case
-    utils_logging.with_preserved_state(fn() {
-      hackney.send_bits(
-        photo_upload_request |> request.map(bytes_tree.from_bit_array),
-      )
-    })
-  {
+  let repons_result =
+    hackney.send_bits(
+      photo_upload_request |> request.map(bytes_tree.from_bit_array),
+    )
+
+  case repons_result {
     Ok(response) -> {
       glight.logger() |> glight.info("Request has been sent")
       Ok(response)

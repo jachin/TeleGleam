@@ -3,7 +3,7 @@ import create_gallery
 import dot_env
 import dot_env/env
 import filepath
-import gleam/io
+import gleam/erlang/process
 import gleam/option
 import gleam/result
 import glight
@@ -163,7 +163,7 @@ fn upload_photo() -> glint.Command(Nil) {
   let chat_id = telegram.ChatId(chat_id_string)
 
   // Setup the logger
-  glight.configure([glight.File("log.txt")])
+  glight.configure([glight.File("log.txt"), glight.Console])
   glight.set_log_level(logger_level)
 
   glight.logger() |> glight.info("starting the upload_photo command")
@@ -187,8 +187,10 @@ fn upload_photo() -> glint.Command(Nil) {
       glight.logger() |> glight.error("Photo upload FAILD")
     }
   }
-  io.print("upload_photo command completed")
   glight.logger() |> glight.info("upload_photo command completed")
+
+  //This is here so the logs can clear.
+  process.sleep(100)
   Nil
 }
 
