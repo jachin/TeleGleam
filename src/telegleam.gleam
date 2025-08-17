@@ -100,6 +100,8 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
 
   //This is here so the logs can clear.
   process.sleep(100)
+
+  Nil
 }
 
 fn post_simple_text_message() -> glint.Command(Nil) {
@@ -197,6 +199,7 @@ fn upload_photo() -> glint.Command(Nil) {
 
   //This is here so the logs can clear.
   process.sleep(100)
+
   Nil
 }
 
