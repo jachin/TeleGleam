@@ -33,6 +33,8 @@ pub type Msg {
   UploadGalleryResponse(Result(response.Response(BitArray), httpc.HttpError))
   MoveSelectionUp
   MoveSelectionDown
+  MoveSelectedUp
+  MoveSelectedDown
 }
 
 pub type Model {
@@ -79,6 +81,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
       Model(..model, media: media.move_selected_down(model.media)),
       [],
     )
+    MoveSelectedUp -> #(
+      Model(..model, media: media.move_selected_media_up(model.media)),
+      [],
+    )
+    MoveSelectedDown -> #(
+      Model(..model, media: media.move_selected_media_down(model.media)),
+      [],
+    )
   }
 }
 
@@ -104,6 +114,8 @@ pub fn view(model: Model) {
         ui.button("Send", key.Char("s"), UploadGallery),
         ui.button("Up", key.Char("j"), MoveSelectionUp),
         ui.button("Down", key.Char("k"), MoveSelectionDown),
+        ui.button("Up", key.Char("J"), MoveSelectionUp),
+        ui.button("Down", key.Char("K"), MoveSelectionDown),
       ],
     ),
     Some("TeleGleam"),
