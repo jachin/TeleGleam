@@ -31,6 +31,8 @@ pub type Msg {
   ReceivedFileMetaData
   UploadGallery
   UploadGalleryResponse(Result(response.Response(BitArray), httpc.HttpError))
+  MoveSelectionUp
+  MoveSelectionDown
 }
 
 pub type Model {
@@ -69,6 +71,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
       #(Model(..model, uploading_media: True), [])
     }
     UploadGalleryResponse(_) -> #(Model(..model, uploading_media: False), [])
+    MoveSelectionUp -> #(
+      Model(..model, media: media.move_selected_up(model.media)),
+      [],
+    )
+    MoveSelectionDown -> #(
+      Model(..model, media: media.move_selected_down(model.media)),
+      [],
+    )
   }
 }
 
@@ -79,6 +89,10 @@ pub fn view(model: Model) {
         |> list.map(fn(m) {
           ui.row([
             ui.col([
+              case m.selected {
+                True -> ui.text("*")
+                False -> ui.text("#")
+              },
               ui.text(file_path.basename_or_root(m.file_path)),
               ui.text(m.file_path),
               ui.text(m.caption),
@@ -88,6 +102,8 @@ pub fn view(model: Model) {
         |> list.intersperse(ui.hr()),
       [
         ui.button("Send", key.Char("s"), UploadGallery),
+        ui.button("Up", key.Char("j"), MoveSelectionUp),
+        ui.button("Down", key.Char("k"), MoveSelectionDown),
       ],
     ),
     Some("TeleGleam"),
