@@ -170,23 +170,47 @@ pub fn change_selected_index(media: List(Media), new_index: Int) {
   })
 }
 
-pub fn move_selected_up(media: List(Media)) {
+pub fn move_selected_up(media: List(Media), loop_selection: Bool) {
   let old_selected_index = get_selected_index(media)
-  let new_selected_index = case old_selected_index {
-    0 -> list.length(media) - 1
-    i -> i - 1
+  case loop_selection {
+    True -> {
+      let new_selected_index = case old_selected_index {
+        0 -> list.length(media) - 1
+        i -> i - 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
+    False -> {
+      let new_selected_index = case old_selected_index {
+        0 -> 0
+        i -> i - 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
   }
-  change_selected_index(media, new_selected_index)
 }
 
-pub fn move_selected_down(media: List(Media)) {
+pub fn move_selected_down(media: List(Media), loop_selection: Bool) {
   let old_selected_index = get_selected_index(media)
-  let max_index = list.length(media) - 1
-  let new_selected_index = case old_selected_index == max_index {
-    True -> 0
-    False -> old_selected_index + 1
+  case loop_selection {
+    True -> {
+      let max_index = list.length(media) - 1
+      let new_selected_index = case old_selected_index == max_index {
+        True -> 0
+        False -> old_selected_index + 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
+
+    False -> {
+      let max_index = list.length(media) - 1
+      let new_selected_index = case old_selected_index == max_index {
+        True -> old_selected_index
+        False -> old_selected_index + 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
   }
-  change_selected_index(media, new_selected_index)
 }
 
 pub fn move_selected_media_up(media: List(Media)) {

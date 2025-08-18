@@ -26,6 +26,12 @@ pub fn upload_gallery(
   }
 }
 
+pub type MainListDetail {
+  FileName
+  FilePath
+  Caption
+}
+
 pub type Msg {
   RequestFileMetaData
   ReceivedFileMetaData
@@ -35,6 +41,8 @@ pub type Msg {
   MoveSelectionDown
   MoveSelectedUp
   MoveSelectedDown
+  OpenDetails
+  ToggleDetails
 }
 
 pub type Model {
@@ -43,6 +51,7 @@ pub type Model {
     bot_token: telegram.BotToken,
     chat_id: telegram.ChatId,
     uploading_media: Bool,
+    main_list_detail: MainListDetail,
   )
 }
 
@@ -59,6 +68,7 @@ fn init(
       bot_token: bot_token,
       chat_id: chat_id,
       uploading_media: False,
+      main_list_detail: FileName,
     )
   let cmds = []
   fn() { #(model, cmds) }
@@ -74,11 +84,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
     }
     UploadGalleryResponse(_) -> #(Model(..model, uploading_media: False), [])
     MoveSelectionUp -> #(
-      Model(..model, media: media.move_selected_up(model.media)),
+      Model(..model, media: media.move_selected_up(model.media, False)),
       [],
     )
     MoveSelectionDown -> #(
-      Model(..model, media: media.move_selected_down(model.media)),
+      Model(..model, media: media.move_selected_down(model.media, False)),
       [],
     )
     MoveSelectedUp -> #(
@@ -89,37 +99,53 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
       Model(..model, media: media.move_selected_media_down(model.media)),
       [],
     )
+    OpenDetails -> #(model, [])
+    ToggleDetails -> #(
+      Model(
+        ..model,
+        main_list_detail: next_main_list_detail(model.main_list_detail),
+      ),
+      [],
+    )
   }
 }
 
 pub fn view(model: Model) {
-  ui.box(
-    list.append(
-      model.media
-        |> list.map(fn(m) {
-          ui.row([
-            ui.col([
-              case m.selected {
-                True -> ui.text("*")
-                False -> ui.text("#")
+  let actions = [
+    ui.button("Send", key.Char("s"), UploadGallery),
+    ui.button("Up", key.Char("k"), MoveSelectionUp),
+    ui.button("Down", key.Char("j"), MoveSelectionDown),
+    ui.button("Up", key.Char("K"), MoveSelectionUp),
+    ui.button("Down", key.Char("J"), MoveSelectionDown),
+    ui.button("Details", key.Enter, OpenDetails),
+    ui.button("Toggle List", key.Right, ToggleDetails),
+  ]
+
+  let media =
+    model.media
+    |> list.map(fn(m) {
+      ui.align(
+        style.Left,
+        ui.row([
+          ui.col([
+            ui.text_styled(
+              case model.main_list_detail {
+                FileName -> file_path.basename_or_root(m.file_path)
+                FilePath -> m.file_path
+                Caption -> m.caption
               },
-              ui.text(file_path.basename_or_root(m.file_path)),
-              ui.text(m.file_path),
-              ui.text(m.caption),
-            ]),
-          ])
-        })
-        |> list.intersperse(ui.hr()),
-      [
-        ui.button("Send", key.Char("s"), UploadGallery),
-        ui.button("Up", key.Char("j"), MoveSelectionUp),
-        ui.button("Down", key.Char("k"), MoveSelectionDown),
-        ui.button("Up", key.Char("J"), MoveSelectionUp),
-        ui.button("Down", key.Char("K"), MoveSelectionDown),
-      ],
-    ),
-    Some("TeleGleam"),
-  )
+              case m.selected {
+                True -> option.Some(style.Yellow)
+                False -> option.None
+              },
+              option.None,
+            ),
+          ]),
+        ]),
+      )
+    })
+
+  ui.box([ui.col(list.append(media, actions))], Some("TeleGleam"))
   |> ui.align(style.Center, _)
   |> layout.center(style.Pct(90), style.Pct(90))
 }
@@ -145,4 +171,12 @@ pub fn main(
     )
     |> shore.start
   exit |> process.receive_forever
+}
+
+fn next_main_list_detail(a: MainListDetail) -> MainListDetail {
+  case a {
+    FileName -> FilePath
+    FilePath -> Caption
+    Caption -> FileName
+  }
 }

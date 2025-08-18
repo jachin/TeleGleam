@@ -41,13 +41,13 @@ pub fn get_selected_order_test() {
 }
 
 pub fn move_selected_up_test() {
-  media.move_selected_up(test_data())
+  media.move_selected_up(test_data(), False)
   |> media.get_selected_index
   |> should.equal(0)
 }
 
 pub fn move_selected_down_test() {
-  media.move_selected_down(test_data())
+  media.move_selected_down(test_data(), False)
   |> media.get_selected_index
   |> should.equal(2)
 }
