@@ -1,6 +1,7 @@
 import gleam/erlang/process
 import gleam/http/response
 import gleam/httpc
+import gleam/int
 import gleam/list
 import gleam/option.{Some}
 import glight.{info, logger}
@@ -111,41 +112,47 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
 }
 
 pub fn view(model: Model) {
-  let actions = [
-    ui.button("Send", key.Char("s"), UploadGallery),
-    ui.button("Up", key.Char("k"), MoveSelectionUp),
-    ui.button("Down", key.Char("j"), MoveSelectionDown),
-    ui.button("Up", key.Char("K"), MoveSelectionUp),
-    ui.button("Down", key.Char("J"), MoveSelectionDown),
-    ui.button("Details", key.Enter, OpenDetails),
-    ui.button("Toggle List", key.Right, ToggleDetails),
-  ]
+  let actions =
+    ui.row([
+      ui.button("Send", key.Char("s"), UploadGallery),
+      ui.button("Up", key.Char("k"), MoveSelectionUp),
+      ui.button("Down", key.Char("j"), MoveSelectionDown),
+      ui.button("Up", key.Char("K"), MoveSelectionUp),
+      ui.button("Down", key.Char("J"), MoveSelectionDown),
+      ui.button("Details", key.Enter, OpenDetails),
+      ui.button("Toggle List", key.Right, ToggleDetails),
+    ])
+
+  let build_row = fn(m: media.Media) {
+    ui.row([
+      ui.text_styled(
+        case model.main_list_detail {
+          FileName ->
+            int.to_string(m.order)
+            <> " "
+            <> file_path.basename_or_root(m.file_path)
+          FilePath -> int.to_string(m.order) <> " " <> m.file_path
+          Caption -> int.to_string(m.order) <> " " <> m.caption
+        },
+        case m.selected {
+          True -> option.Some(style.Yellow)
+          False -> option.None
+        },
+        option.None,
+      ),
+    ])
+  }
 
   let media =
-    model.media
-    |> list.map(fn(m) {
-      ui.align(
-        style.Left,
-        ui.row([
-          ui.col([
-            ui.text_styled(
-              case model.main_list_detail {
-                FileName -> file_path.basename_or_root(m.file_path)
-                FilePath -> m.file_path
-                Caption -> m.caption
-              },
-              case m.selected {
-                True -> option.Some(style.Yellow)
-                False -> option.None
-              },
-              option.None,
-            ),
-          ]),
-        ]),
-      )
-    })
+    ui.align(
+      style.Left,
+      ui.col(
+        model.media
+        |> list.map(build_row),
+      ),
+    )
 
-  ui.box([ui.col(list.append(media, actions))], Some("TeleGleam"))
+  ui.box([ui.col([media, ui.bar(style.Cyan), actions])], Some("TeleGleam"))
   |> ui.align(style.Center, _)
   |> layout.center(style.Pct(90), style.Pct(90))
 }
