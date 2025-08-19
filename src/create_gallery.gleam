@@ -88,18 +88,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
       Model(..model, media: media.move_selected_up(model.media, False)),
       [],
     )
-    MoveSelectionDown -> #(
-      Model(..model, media: media.move_selected_down(model.media, False)),
-      [],
-    )
+    MoveSelectionDown -> {
+      #(Model(..model, media: media.move_selected_down(model.media, False)), [])
+    }
     MoveSelectedUp -> #(
       Model(..model, media: media.move_selected_media_up(model.media)),
       [],
     )
-    MoveSelectedDown -> #(
-      Model(..model, media: media.move_selected_media_down(model.media)),
-      [],
-    )
+    MoveSelectedDown -> {
+      #(Model(..model, media: media.move_selected_media_down(model.media)), [])
+    }
     OpenDetails -> #(model, [])
     ToggleDetails -> #(
       Model(
@@ -117,8 +115,8 @@ pub fn view(model: Model) {
       ui.button("Send", key.Char("s"), UploadGallery),
       ui.button("Up", key.Char("k"), MoveSelectionUp),
       ui.button("Down", key.Char("j"), MoveSelectionDown),
-      ui.button("Up", key.Char("K"), MoveSelectionUp),
-      ui.button("Down", key.Char("J"), MoveSelectionDown),
+      ui.button("Up", key.Char("K"), MoveSelectedUp),
+      ui.button("Down", key.Char("J"), MoveSelectedDown),
       ui.button("Details", key.Enter, OpenDetails),
       ui.button("Toggle List", key.Right, ToggleDetails),
     ])

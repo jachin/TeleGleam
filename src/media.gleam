@@ -49,6 +49,10 @@ fn file_path_to_media_type(path) {
   }
 }
 
+pub fn get_caption(media: Media) {
+  media.caption
+}
+
 fn is_media_file(path) {
   option.is_some(file_path_to_media_type(path))
 }
@@ -130,6 +134,10 @@ pub fn get_selected(media: List(Media)) {
       False -> acc
     }
   })
+}
+
+pub fn get_at_order_index(media: List(Media), order_index: Int) {
+  media |> list.find(fn(m) { m.order == order_index })
 }
 
 pub fn get_selected_order(media: List(Media)) {

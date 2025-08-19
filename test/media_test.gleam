@@ -1,3 +1,4 @@
+import gleam/result
 import gleeunit
 import gleeunit/should
 import media.{Media}
@@ -24,7 +25,7 @@ fn test_data() {
     ),
     Media(
       media_type: media.Photo(media.Jepg),
-      caption: "gree",
+      caption: "green",
       file_path: "green.jpg",
       order: 2,
       selected: False,
@@ -56,7 +57,7 @@ pub fn sort_media_test() {
   let disordered_data = [
     Media(
       media_type: media.Photo(media.Jepg),
-      caption: "gree",
+      caption: "green",
       file_path: "green.jpg",
       order: 2,
       selected: False,
@@ -83,7 +84,26 @@ pub fn sort_media_test() {
 pub fn move_selected_media_up_test() {
   test_data()
   |> media.move_selected_media_up()
-  |> echo
   |> media.get_selected_index
   |> should.equal(0)
+
+  test_data()
+  |> media.move_selected_media_up()
+  |> media.get_selected
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
+
+  test_data()
+  |> media.move_selected_media_up()
+  |> media.get_at_order_index(0)
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
+}
+
+pub fn move_selected_media_down_test() {
+  test_data()
+  |> media.move_selected_media_down()
+  |> media.get_at_order_index(2)
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
 }
