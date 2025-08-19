@@ -81,9 +81,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
     ReceivedFileMetaData -> #(model, [])
     UploadGallery -> {
       glight.logger() |> glight.info("update() UploadGallery")
-      #(Model(..model, uploading_media: True), [])
+
+      #(Model(..model, uploading_media: True), [
+        upload_gallery(model.bot_token, model.chat_id, model.media),
+      ])
     }
-    UploadGalleryResponse(_) -> #(Model(..model, uploading_media: False), [])
+    UploadGalleryResponse(r) -> {
+      case r {
+        Ok(_) ->
+          glight.logger() |> glight.info("update() UploadGalleryResponse is OK")
+        Error(_) ->
+          glight.logger()
+          |> glight.error("update() UploadGalleryResponse is ERROR")
+      }
+      #(Model(..model, uploading_media: False), [])
+    }
     MoveSelectionUp -> #(
       Model(..model, media: media.move_selected_up(model.media, False)),
       [],
