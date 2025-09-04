@@ -1,10 +1,15 @@
 import filepath
+
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
-import glexif
+import glight
+import utils/logging as utils_logging
+
+import exiftool_caller
+import file_size
 import simplifile
 
 pub type MediaType {
@@ -26,6 +31,7 @@ pub type Media {
     file_path: String,
     order: Int,
     selected: Bool,
+    file_size: file_size.FileSize,
   )
 }
 
@@ -38,10 +44,15 @@ fn file_path_to_media_type(path) {
         "png" -> option.Some(Photo(Png))
         "gif" -> option.Some(Photo(Gif))
         "mp4" -> option.Some(Video)
+        "mov" -> option.Some(Video)
         _ -> option.None
       }
     Error(_) -> option.None
   }
+}
+
+pub fn get_caption(media: Media) {
+  media.caption
 }
 
 fn is_media_file(path) {
@@ -85,12 +96,14 @@ pub fn find_media(absolute_media_path) {
         Media(
           media_type: media_type,
           caption: option.unwrap(
-            glexif.get_exif_data_for_file(f).image_description,
+            exiftool_caller.get_media_file_metadata(f)
+              |> exiftool_caller.get_description,
             "",
           ),
           file_path: f,
           order: i,
           selected: i == 0,
+          file_size: file_size.UnknownFileSize,
         )
       })
     })
@@ -102,15 +115,18 @@ pub fn find_media(absolute_media_path) {
 pub fn file_path_to_media(path) {
   file_path_to_media_type(path)
   |> option.map(fn(media_type) {
+    let media_file_metadata = exiftool_caller.get_media_file_metadata(path)
     Media(
       media_type: media_type,
       caption: option.unwrap(
-        glexif.get_exif_data_for_file(path).image_description,
+        media_file_metadata
+          |> exiftool_caller.get_description,
         "",
       ),
       file_path: path,
       order: 0,
       selected: True,
+      file_size: exiftool_caller.get_file_size(media_file_metadata),
     )
   })
 }
@@ -123,6 +139,10 @@ pub fn get_selected(media: List(Media)) {
       False -> acc
     }
   })
+}
+
+pub fn get_at_order_index(media: List(Media), order_index: Int) {
+  media |> list.find(fn(m) { m.order == order_index })
 }
 
 pub fn get_selected_order(media: List(Media)) {
@@ -163,23 +183,47 @@ pub fn change_selected_index(media: List(Media), new_index: Int) {
   })
 }
 
-pub fn move_selected_up(media: List(Media)) {
+pub fn move_selected_up(media: List(Media), loop_selection: Bool) {
   let old_selected_index = get_selected_index(media)
-  let new_selected_index = case old_selected_index {
-    0 -> list.length(media) - 1
-    i -> i - 1
+  case loop_selection {
+    True -> {
+      let new_selected_index = case old_selected_index {
+        0 -> list.length(media) - 1
+        i -> i - 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
+    False -> {
+      let new_selected_index = case old_selected_index {
+        0 -> 0
+        i -> i - 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
   }
-  change_selected_index(media, new_selected_index)
 }
 
-pub fn move_selected_down(media: List(Media)) {
+pub fn move_selected_down(media: List(Media), loop_selection: Bool) {
   let old_selected_index = get_selected_index(media)
-  let max_index = list.length(media) - 1
-  let new_selected_index = case old_selected_index == max_index {
-    True -> 0
-    False -> old_selected_index + 1
+  case loop_selection {
+    True -> {
+      let max_index = list.length(media) - 1
+      let new_selected_index = case old_selected_index == max_index {
+        True -> 0
+        False -> old_selected_index + 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
+
+    False -> {
+      let max_index = list.length(media) - 1
+      let new_selected_index = case old_selected_index == max_index {
+        True -> old_selected_index
+        False -> old_selected_index + 1
+      }
+      change_selected_index(media, new_selected_index)
+    }
   }
-  change_selected_index(media, new_selected_index)
 }
 
 pub fn move_selected_media_up(media: List(Media)) {
@@ -238,4 +282,14 @@ pub fn to_input_media_json(media: Media) {
     #("caption", json.string(media.caption)),
     #("media", json.string("attach://" <> filepath.base_name(media.file_path))),
   ])
+}
+
+pub fn log_media(level: glight.LogLevel, media: Media, msg: String) {
+  utils_logging.log(
+    glight.logger()
+      |> glight.with("file_path", media.file_path)
+      |> glight.with("caption", media.caption),
+    level,
+    msg,
+  )
 }

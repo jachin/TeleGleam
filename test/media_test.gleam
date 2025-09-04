@@ -1,3 +1,5 @@
+import file_size
+import gleam/result
 import gleeunit
 import gleeunit/should
 import media.{Media}
@@ -14,6 +16,7 @@ fn test_data() {
       file_path: "red.jpg",
       order: 0,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -21,13 +24,15 @@ fn test_data() {
       file_path: "blue.jpg",
       order: 1,
       selected: True,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
-      caption: "gree",
+      caption: "green",
       file_path: "green.jpg",
       order: 2,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
   ]
 }
@@ -41,13 +46,13 @@ pub fn get_selected_order_test() {
 }
 
 pub fn move_selected_up_test() {
-  media.move_selected_up(test_data())
+  media.move_selected_up(test_data(), False)
   |> media.get_selected_index
   |> should.equal(0)
 }
 
 pub fn move_selected_down_test() {
-  media.move_selected_down(test_data())
+  media.move_selected_down(test_data(), False)
   |> media.get_selected_index
   |> should.equal(2)
 }
@@ -56,10 +61,11 @@ pub fn sort_media_test() {
   let disordered_data = [
     Media(
       media_type: media.Photo(media.Jepg),
-      caption: "gree",
+      caption: "green",
       file_path: "green.jpg",
       order: 2,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -67,6 +73,7 @@ pub fn sort_media_test() {
       file_path: "blue.jpg",
       order: 1,
       selected: True,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -74,6 +81,7 @@ pub fn sort_media_test() {
       file_path: "red.jpg",
       order: 0,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
   ]
   media.sort_media(disordered_data)
@@ -83,7 +91,26 @@ pub fn sort_media_test() {
 pub fn move_selected_media_up_test() {
   test_data()
   |> media.move_selected_media_up()
-  |> echo
   |> media.get_selected_index
   |> should.equal(0)
+
+  test_data()
+  |> media.move_selected_media_up()
+  |> media.get_selected
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
+
+  test_data()
+  |> media.move_selected_media_up()
+  |> media.get_at_order_index(0)
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
+}
+
+pub fn move_selected_media_down_test() {
+  test_data()
+  |> media.move_selected_media_down()
+  |> media.get_at_order_index(2)
+  |> result.map(media.get_caption)
+  |> should.equal(Ok("blue"))
 }

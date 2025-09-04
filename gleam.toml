@@ -1,7 +1,9 @@
 name = "telegleam"
 version = "1.0.0"
 
-target = "javascript"
+target = "erlang"
+
+gleam = ">= 1.11.1"
 
 description = "A command line tool for doing stuff on Telegram with the Bot API"
 licences = ["Apache-2.0"]
@@ -12,22 +14,26 @@ repository = { type = "github", user = "jachin", repo = "telegleam" }
 # https://gleam.run/writing-gleam/gleam-toml/.
 
 [dependencies]
-gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_stdlib = ">= 0.62.0 and < 2.0.0"
 envoy = ">= 1.0.2 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 glint = ">= 1.2.1 and < 2.0.0"
 simplifile = "~> 2.2"
 filepath = ">= 1.1.2 and < 2.0.0"
 dot_env = ">= 1.2.0 and < 2.0.0"
-gleam_json = ">= 2.3.0 and < 3.0.0"
-flash = ">= 2.0.0 and < 3.0.0"
-gtui = ">= 0.1.0 and < 1.0.0"
-gleam_http = ">= 4.0.0 and < 5.0.0"
-gleam_fetch = ">= 1.3.0 and < 2.0.0"
-gleam_javascript = ">= 1.0.0 and < 2.0.0"
-file_streams = ">= 1.5.0 and < 2.0.0"
+gleam_json = ">= 3.0.0 and < 4.0.0"
 gleam_time = ">= 1.2.0 and < 2.0.0"
 multipart_form = ">= 1.0.0 and < 2.0.0"
+gleam_erlang = ">= 1.2.0 and < 2.0.0"
+shellout = ">= 1.7.0 and < 2.0.0"
+shore = ">= 1.1.0 and < 2.0.0"
+gleam_http = ">= 4.1.0 and < 5.0.0"
+exiftool_caller = { path = "../../Gleam/exiftool_caller" }
+logging = ">= 1.3.0 and < 2.0.0"
+gleam_httpc = ">= 5.0.0 and < 6.0.0"
+glight = ">= 2.1.1 and < 3.0.0"
+gleam_hackney = ">= 1.3.1 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+gleescript = ">= 1.5.1 and < 2.0.0"

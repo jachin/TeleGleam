@@ -3,34 +3,30 @@ import create_gallery
 import dot_env
 import dot_env/env
 import filepath
-import flash
+import gleam/erlang/process
 import gleam/option
 import gleam/result
+import glight
 import glint
 import glint/constraint
-import log_file_writer
+import logging
 import media
 import simplifile
-import teashop
-import teashop/command
 import telegram
+import utils/logging as utils_logging
 
 fn logger_level_flag() -> glint.Flag(String) {
   glint.string_flag("logger-level")
   |> glint.flag_help("The logger level")
   |> glint.flag_constraint(
-    constraint.one_of([
-      flash.level_to_string(flash.DebugLevel),
-      flash.level_to_string(flash.InfoLevel),
-      flash.level_to_string(flash.WarnLevel),
-      flash.level_to_string(flash.ErrorLevel),
-    ]),
+    constraint.one_of(utils_logging.log_levels_as_strings()),
   )
   |> fn(flag) {
     case env.get_string("LOGGER_LEVEL") {
       Ok(value) -> flag |> glint.flag_default(value)
       Error(_) ->
-        flag |> glint.flag_default(flash.level_to_string(flash.ErrorLevel))
+        flag
+        |> glint.flag_default(utils_logging.log_level_to_string(glight.Error))
     }
   }
 }
@@ -84,11 +80,13 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token_flag(flags)
   let assert Ok(chat_id_string) = chat_id_flag(flags)
-  let assert Ok(logger_level_string) = logger_level_flag(flags)
+  let assert Ok(logger_level) =
+    logger_level_flag(flags)
+    |> result.map_error(fn(_) { "" })
+    |> result.try(utils_logging.parse_string_to_log_level)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  let logger = setup_logger_from_string(logger_level_string)
 
   let media_path = case args {
     [] -> "."
@@ -97,25 +95,11 @@ fn create_telegram_gallery() -> glint.Command(Nil) {
 
   let absolute_media_path = get_absolute_path(media_path)
 
-  let _ = media.find_media(absolute_media_path)
+  let media = media.find_media(absolute_media_path)
+  create_gallery.main(logger_level, bot_token, chat_id, media)
 
-  let app =
-    teashop.app(
-      fn(_) {
-        #(
-          create_gallery.Model(
-            media: media.find_media(absolute_media_path),
-            logger: logger,
-            bot_token: bot_token,
-            chat_id: chat_id,
-          ),
-          command.set_window_title("telegleam"),
-        )
-      },
-      create_gallery.update,
-      create_gallery.view,
-    )
-  teashop.start(app, Nil)
+  //This is here so the logs can clear.
+  process.sleep(100)
 
   Nil
 }
@@ -124,24 +108,48 @@ fn post_simple_text_message() -> glint.Command(Nil) {
   use <- glint.command_help("Post a simple text message to Telegram")
   use bot_token <- glint.flag(telegram_bot_token_flag())
   use chat_id <- glint.flag(telegram_chat_id_flag())
-  use logger_level_flag <- glint.flag(logger_level_flag())
+  //use logger_level_flag <- glint.flag(logger_level_flag())
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token(flags)
   let assert Ok(chat_id_string) = chat_id(flags)
-  let assert Ok(logger_level_string) = logger_level_flag(flags)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  let logger = setup_logger_from_string(logger_level_string)
 
-  flash.info(logger, "Posting a simple text message")
+  logging.log(logging.Info, "Posting a simple text message")
+  telegram.log_bot_token(bot_token, logging.Info)
 
   let assert Ok(message) = case args {
     [] -> Error("No message")
     [m, ..] -> Ok(m)
   }
 
-  let _ = telegram.send_message(logger, bot_token, chat_id, message)
+  let response_result = telegram.send_message(bot_token, chat_id, message)
+
+  let _ = case response_result {
+    Ok(_) -> {
+      Nil
+    }
+    Error(e) -> {
+      case e {
+        telegram.TelegramResponseError(_) -> {
+          logging.log(logging.Error, "TelegramResponseError")
+        }
+        telegram.TelegramRequestHackneyError(_) -> {
+          logging.log(logging.Error, "TelegramRequestHackneyError")
+        }
+        telegram.TelegramRequestError(_) -> {
+          logging.log(logging.Error, "TelegramRequestError")
+        }
+        telegram.TelegramInvalidUriError -> {
+          logging.log(logging.Error, "TelegramInvalidUriError")
+        }
+      }
+    }
+  }
+
+  //This is here so the logs can clear.
+  process.sleep(100)
 
   Nil
 }
@@ -154,13 +162,19 @@ fn upload_photo() -> glint.Command(Nil) {
   use _, args, flags <- glint.command()
   let assert Ok(bot_token_string) = bot_token(flags)
   let assert Ok(chat_id_string) = chat_id(flags)
-  let assert Ok(logger_level_string) = logger_level_flag(flags)
+  let assert Ok(logger_level) =
+    logger_level_flag(flags)
+    |> result.map_error(fn(_) { "" })
+    |> result.try(utils_logging.parse_string_to_log_level)
 
   let bot_token = telegram.BotToken(bot_token_string)
   let chat_id = telegram.ChatId(chat_id_string)
-  let logger = setup_logger_from_string(logger_level_string)
 
-  flash.info(logger, "Uploading a photo")
+  // Setup the logger
+  glight.configure([glight.File("log.txt"), glight.Console])
+  glight.set_log_level(logger_level)
+
+  glight.logger() |> glight.info("starting the upload_photo command")
 
   let assert Ok(photo_path) = case args {
     [] -> Error("No photo path")
@@ -171,21 +185,22 @@ fn upload_photo() -> glint.Command(Nil) {
 
   let assert option.Some(photo) = media.file_path_to_media(absolute_photo_path)
 
-  let _ = telegram.send_photo(logger, bot_token, chat_id, photo)
+  media.log_media(glight.Info, photo, "photo to upload")
+
+  case telegram.send_photo(bot_token, chat_id, photo) {
+    Ok(_) -> {
+      glight.logger() |> glight.info("Photo uploaded")
+    }
+    Error(_) -> {
+      glight.logger() |> glight.error("Photo upload FAILD")
+    }
+  }
+  glight.logger() |> glight.info("upload_photo command completed")
+
+  //This is here so the logs can clear.
+  process.sleep(100)
 
   Nil
-}
-
-fn setup_logger_from_string(logger_level_string) {
-  let logger_level = case flash.parse_level(logger_level_string) {
-    Ok(level) -> level
-    Error(_) -> flash.ErrorLevel
-  }
-  setup_logger(logger_level)
-}
-
-fn setup_logger(level) {
-  flash.new(level, log_file_writer.text_log_file_writer("log.txt"))
 }
 
 pub fn main() {

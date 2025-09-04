@@ -1,17 +1,19 @@
 import filepath
-import flash
-import gleam/dynamic
+import gleam/bit_array
+import gleam/bytes_tree
 import gleam/dynamic/decode
-import gleam/fetch
+import gleam/hackney
 import gleam/http
 import gleam/http/request
 import gleam/http/response
+import gleam/httpc
 import gleam/int
-import gleam/javascript/promise
 import gleam/json
 import gleam/list
 import gleam/result
 import gleeunit/should
+import glight
+import logging
 import media
 import multipart_form
 import multipart_form/field
@@ -32,6 +34,13 @@ pub type ChatFullInfo {
     title: String,
     description: String,
   )
+}
+
+pub type TelegramRequestError {
+  TelegramRequestError(httpc.HttpError)
+  TelegramRequestHackneyError(hackney.Error)
+  TelegramResponseError(json.DecodeError)
+  TelegramInvalidUriError
 }
 
 fn chat_id_decoder() {
@@ -59,12 +68,15 @@ fn bot_token_to_string(bot_token: BotToken) {
   }
 }
 
+pub fn log_bot_token(bot_token: BotToken, level: logging.LogLevel) {
+  logging.log(level, "bot_token: " <> bot_token_to_string(bot_token))
+}
+
 pub fn get_chat(
-  logger,
   bot_token: BotToken,
   chat_id: ChatId,
-) -> promise.Promise(Result(response.Response(ChatFullInfo), fetch.FetchError)) {
-  flash.info(logger, "get_chat")
+) -> Result(ChatFullInfo, TelegramRequestError) {
+  logging.log(logging.Info, "get_chat")
 
   let json_body =
     json.object([#("chat_id", json.string(chat_id_to_string(chat_id)))])
@@ -81,83 +93,19 @@ pub fn get_chat(
     |> request.set_body(json_body)
 
   // Send the HTTP request to the server
+  use resp <- result.try(
+    result.map_error(httpc.send(req), fn(e) { TelegramRequestError(e) }),
+  )
+  use chat <- result.try(
+    json.parse(resp.body, chat_full_info_decoder())
+    |> result.map_error(fn(e) { TelegramResponseError(e) }),
+  )
 
-  let foo1 = fetch.send(req)
-  let foo2: promise.Promise(
-    Result(response.Response(dynamic.Dynamic), fetch.FetchError),
-  ) = promise.try_await(foo1, fn(foo3) { fetch.read_json_body(foo3) })
-
-  promise.tap(foo2, fn(result) { echo result })
-
-  let foo4 =
-    promise.await(
-      foo2,
-      fn(
-        resp_result: Result(
-          response.Response(dynamic.Dynamic),
-          fetch.FetchError,
-        ),
-      ) {
-        promise.resolve(parse_chat_response(resp_result))
-      },
-    )
-
-  promise.tap(foo4, fn(result) { echo result })
+  Ok(chat)
 }
 
-fn parse_chat_response(
-  resp_result: Result(response.Response(dynamic.Dynamic), fetch.FetchError),
-) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
-  case resp_result {
-    Ok(resp) -> {
-      let a =
-        response.try_map(resp, fn(json_body) {
-          decode.run(json_body, chat_full_info_decoder())
-        })
-
-      do_the_thing(a)
-    }
-    Error(error) -> Error(error)
-  }
-}
-
-fn do_the_thing(
-  a: Result(response.Response(ChatFullInfo), List(decode.DecodeError)),
-) -> Result(response.Response(ChatFullInfo), fetch.FetchError) {
-  case a {
-    Ok(resp) -> {
-      Ok(resp)
-    }
-    Error(err) -> {
-      echo err
-      Error(fetch.InvalidJsonBody)
-    }
-  }
-}
-
-// {
-//   let bar3 = case resp_result {
-//     Ok(resp) ->
-//       let bar4 = response.try_map(resp, fn(json_body) {
-//         decode.run(json_body, chat_full_info_decoder())
-//       })
-//       let bar5 = case bar4 {
-//         Ok(chat_full_info) -> Ok(chat_full_info)
-//         Err(error) -> Err(error)
-//       }
-//       bar5
-//     error -> error
-//   }
-//   promise.resolve(bar3)
-// }
-
-pub fn send_message(
-  logger,
-  bot_token: BotToken,
-  chat_id: ChatId,
-  message: String,
-) {
-  flash.info(logger, "telegram_send_message")
+pub fn send_message(bot_token: BotToken, chat_id: ChatId, message: String) {
+  logging.log(logging.Info, "telegram_send_message")
 
   let url =
     "https://api.telegram.org/"
@@ -173,7 +121,7 @@ pub fn send_message(
     ])
     |> json.to_string
 
-  flash.info(logger, "json_body " <> json_body)
+  logging.log(logging.Info, "json_body " <> json_body)
 
   let req =
     base_req
@@ -181,13 +129,12 @@ pub fn send_message(
     |> request.set_header("Content-Type", "application/json")
     |> request.set_body(json_body)
 
-  flash.info(logger, "Request is setup")
+  logging.log(logging.Info, "Request is setup")
 
-  send_request(req, logger)
+  send_request(req)
 }
 
 pub fn send_media_group(
-  logger,
   bot_token: BotToken,
   chat_id: ChatId,
   media_group: List(media.Media),
@@ -207,28 +154,31 @@ pub fn send_media_group(
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form_data)
 
-  use resp <- promise.try_await(fetch.send_bits(r))
-  use resp_body <- promise.try_await(fetch.read_text_body(resp))
+  use resp <- result.try(hackney.send_bits(
+    r |> request.map(bytes_tree.from_bit_array),
+  ))
 
-  flash.info(logger, "Request has been sent")
+  glight.logger() |> glight.info("Request has been sent")
 
   // Detailed error logging
-  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-  flash.info(logger, "Response body: " <> resp_body.body)
+  logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
+  case bit_array.to_string(resp.body) {
+    Ok(body_as_string) ->
+      glight.logger() |> glight.info("Response body: " <> body_as_string)
+    Error(_) ->
+      glight.logger()
+      |> glight.info("Unable to covert the response body into a string")
+  }
 
   // We get a response record back
   resp.status
   |> should.equal(200)
 
-  promise.resolve(Ok(resp))
+  Ok(resp)
 }
 
-pub fn send_photo(
-  logger,
-  bot_token: BotToken,
-  chat_id: ChatId,
-  photo: media.Media,
-) {
+pub fn send_photo(bot_token: BotToken, chat_id: ChatId, photo: media.Media) {
+  glight.logger() |> glight.info("send_photo")
   let assert Ok(photo_bits) = simplifile.read_bits(photo.file_path)
 
   let form = [
@@ -251,46 +201,64 @@ pub fn send_photo(
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form)
 
-  use resp <- promise.try_await(fetch.send_bits(photo_upload_request))
-  use resp_body <- promise.try_await(fetch.read_text_body(resp))
+  glight.logger() |> glight.info("send_photo request is ready")
 
-  flash.info(logger, "Request has been sent")
+  let repons_result =
+    hackney.send_bits(
+      photo_upload_request |> request.map(bytes_tree.from_bit_array),
+    )
 
-  // Detailed error logging
-  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-  flash.info(logger, "Response body: " <> resp_body.body)
+  case repons_result {
+    Ok(response) -> {
+      glight.logger() |> glight.info("Request has been sent")
+      Ok(response)
+    }
+    Error(error) -> {
+      glight.logger() |> glight.error("Request failed")
 
-  // We get a response record back
-  resp.status
-  |> should.equal(200)
-
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
-
-  promise.resolve(Ok(resp))
+      case error {
+        hackney.InvalidUtf8Response ->
+          glight.logger() |> glight.error("InvalidUtf8Response")
+        hackney.Other(_) ->
+          glight.logger() |> glight.error("Some other kind of error")
+      }
+      Error(TelegramRequestHackneyError(error))
+    }
+  }
 }
 
-fn send_request(req, logger) {
+fn send_request(req) {
+  glight.logger() |> glight.info("Send a request")
+
   // Send the HTTP request to the server
-  use resp <- promise.try_await(fetch.send(req))
-  use resp_body <- promise.try_await(fetch.read_text_body(resp))
+  let resp_result =
+    httpc.send(req) |> result.map_error(fn(e) { TelegramRequestError(e) })
 
-  flash.info(logger, "Request has been sent")
+  case resp_result {
+    Ok(resp) -> {
+      glight.logger() |> glight.info("Request has been sent")
 
-  // Detailed error logging
-  flash.info(logger, "Response status: " <> resp.status |> int.to_string)
-  flash.info(logger, "Response body: " <> resp_body.body)
+      // Detailed error logging
+      glight.logger()
+      |> glight.info("Response status: " <> resp.status |> int.to_string)
 
-  // We get a response record back
-  resp.status
-  |> should.equal(200)
+      glight.logger() |> glight.info("Response body: " <> resp.body)
 
-  resp
-  |> response.get_header("content-type")
-  |> should.equal(Ok("application/json"))
+      // We get a response record back
+      resp.status
+      |> should.equal(200)
 
-  promise.resolve(Ok(resp))
+      resp
+      |> response.get_header("content-type")
+      |> should.equal(Ok("application/json"))
+    }
+    Error(_) -> {
+      glight.logger() |> glight.error("Request has failed")
+      Nil
+    }
+  }
+
+  resp_result
 }
 
 pub fn build_form_data_for_uploading(

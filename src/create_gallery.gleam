@@ -1,85 +1,199 @@
-import flash
+import gleam/erlang/process
+import gleam/hackney
+import gleam/http/response
+import gleam/int
 import gleam/list
-import gleam/string
+import gleam/option.{Some}
+import glight.{info, logger}
+import logging
 import media
-import teashop/command
-import teashop/event
-import teashop/key
+import shore
+import shore/key
+import shore/layout
+import shore/style
+import shore/ui
 import telegram
+import utils/file_path
+
+pub fn upload_gallery(
+  bot_token: telegram.BotToken,
+  chat_id: telegram.ChatId,
+  media: List(media.Media),
+) -> fn() -> Msg {
+  fn() {
+    logger() |> info("upload_gallery")
+    telegram.send_media_group(bot_token, chat_id, media)
+    |> UploadGalleryResponse
+  }
+}
+
+pub type MainListDetail {
+  FileName
+  FilePath
+  Caption
+}
 
 pub type Msg {
-  GetChatInfoResponse(chat_info: telegram.ChatFullInfo)
+  RequestFileMetaData
+  ReceivedFileMetaData
+  UploadGallery
+  UploadGalleryResponse(Result(response.Response(BitArray), hackney.Error))
+  MoveSelectionUp
+  MoveSelectionDown
+  MoveSelectedUp
+  MoveSelectedDown
+  OpenDetails
+  ToggleDetails
 }
 
 pub type Model {
   Model(
     media: List(media.Media),
-    logger: flash.Logger,
     bot_token: telegram.BotToken,
     chat_id: telegram.ChatId,
+    uploading_media: Bool,
+    main_list_detail: MainListDetail,
   )
 }
 
-pub fn update(model: Model, event) {
-  case event {
-    event.Key(key.Char("q")) | event.Key(key.Esc) -> #(model, command.quit())
-    event.Key(key.Char("k")) | event.Key(key.Up) -> {
-      #(
-        Model(..model, media: media.move_selected_up(model.media)),
-        command.none(),
-      )
-    }
-    event.Key(key.Char("j")) | event.Key(key.Down) -> {
-      #(
-        Model(..model, media: media.move_selected_down(model.media)),
-        command.none(),
-      )
-    }
-    event.Key(key.Char("K")) -> {
-      #(
-        Model(..model, media: media.move_selected_media_up(model.media)),
-        command.none(),
-      )
-    }
-    event.Key(key.Char("J")) -> {
-      #(
-        Model(..model, media: media.move_selected_media_down(model.media)),
-        command.none(),
-      )
-    }
+fn init(
+  bot_token: telegram.BotToken,
+  chat_id: telegram.ChatId,
+  media: List(media.Media),
+) -> fn() -> #(Model, List(fn() -> Msg)) {
+  logging.log(logging.Debug, "Initialzing the create gallery app")
 
-    event.Key(key.Char("u")) -> {
-      #(
-        model,
-        command.from(fn(_) {
-          telegram.send_media_group(
-            model.logger,
-            model.bot_token,
-            model.chat_id,
-            model.media,
-          )
-          Nil
-        }),
-      )
-    }
+  let model =
+    Model(
+      media: media,
+      bot_token: bot_token,
+      chat_id: chat_id,
+      uploading_media: False,
+      main_list_detail: FileName,
+    )
+  let cmds = []
+  fn() { #(model, cmds) }
+}
 
-    _otherwise -> #(model, command.none())
+pub fn update(model: Model, msg: Msg) -> #(Model, List(fn() -> Msg)) {
+  case msg {
+    RequestFileMetaData -> #(model, [])
+    ReceivedFileMetaData -> #(model, [])
+    UploadGallery -> {
+      glight.logger() |> glight.info("update() UploadGallery")
+
+      #(Model(..model, uploading_media: True), [
+        upload_gallery(model.bot_token, model.chat_id, model.media),
+      ])
+    }
+    UploadGalleryResponse(r) -> {
+      case r {
+        Ok(_) ->
+          glight.logger() |> glight.info("update() UploadGalleryResponse is OK")
+        Error(_) ->
+          glight.logger()
+          |> glight.error("update() UploadGalleryResponse is ERROR")
+      }
+      #(Model(..model, uploading_media: False), [])
+    }
+    MoveSelectionUp -> #(
+      Model(..model, media: media.move_selected_up(model.media, False)),
+      [],
+    )
+    MoveSelectionDown -> {
+      #(Model(..model, media: media.move_selected_down(model.media, False)), [])
+    }
+    MoveSelectedUp -> #(
+      Model(..model, media: media.move_selected_media_up(model.media)),
+      [],
+    )
+    MoveSelectedDown -> {
+      #(Model(..model, media: media.move_selected_media_down(model.media)), [])
+    }
+    OpenDetails -> #(model, [])
+    ToggleDetails -> #(
+      Model(
+        ..model,
+        main_list_detail: next_main_list_detail(model.main_list_detail),
+      ),
+      [],
+    )
   }
 }
 
 pub fn view(model: Model) {
-  let header = "Telegram Lacky - Create Gallery"
-  let footer = "Press q to quit."
+  let actions =
+    ui.row([
+      ui.button("Send", key.Char("s"), UploadGallery),
+      ui.button("Up", key.Char("k"), MoveSelectionUp),
+      ui.button("Down", key.Char("j"), MoveSelectionDown),
+      ui.button("Up", key.Char("K"), MoveSelectedUp),
+      ui.button("Down", key.Char("J"), MoveSelectedDown),
+      ui.button("Details", key.Enter, OpenDetails),
+      ui.button("Toggle List", key.Right, ToggleDetails),
+    ])
+
+  let build_row = fn(m: media.Media) {
+    ui.row([
+      ui.text_styled(
+        case model.main_list_detail {
+          FileName ->
+            int.to_string(m.order)
+            <> " "
+            <> file_path.basename_or_root(m.file_path)
+          FilePath -> int.to_string(m.order) <> " " <> m.file_path
+          Caption -> int.to_string(m.order) <> " " <> m.caption
+        },
+        case m.selected {
+          True -> option.Some(style.Yellow)
+          False -> option.None
+        },
+        option.None,
+      ),
+    ])
+  }
 
   let media =
-    model.media
-    |> list.map(fn(m) {
-      case m.selected {
-        True -> " [x] " <> m.caption
-        False -> " [ ] " <> m.caption
-      }
-    })
-    |> string.join("\n")
+    ui.align(
+      style.Left,
+      ui.col(
+        model.media
+        |> list.map(build_row),
+      ),
+    )
 
-  [header, media, footer] |> string.join("\n\n")
+  ui.box([ui.col([media, ui.bar(style.Cyan), actions])], Some("TeleGleam"))
+  |> ui.align(style.Center, _)
+  |> layout.center(style.Pct(90), style.Pct(90))
+}
+
+pub fn main(
+  logger_level: glight.LogLevel,
+  bot_token: telegram.BotToken,
+  chat_id: telegram.ChatId,
+  media: List(media.Media),
+) {
+  glight.configure([glight.File("log.txt")])
+  glight.set_log_level(logger_level)
+  logger() |> info("starting the create_gallery app")
+  let exit = process.new_subject()
+  let assert Ok(_actor) =
+    shore.spec(
+      init: init(bot_token, chat_id, media),
+      update:,
+      view:,
+      exit:,
+      keybinds: shore.default_keybinds(),
+      redraw: shore.on_update(),
+    )
+    |> shore.start
+  exit |> process.receive_forever
+}
+
+fn next_main_list_detail(a: MainListDetail) -> MainListDetail {
+  case a {
+    FileName -> FilePath
+    FilePath -> Caption
+    Caption -> FileName
+  }
 }
