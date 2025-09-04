@@ -1,4 +1,5 @@
 import filepath
+import gleam/bit_array
 import gleam/bytes_tree
 import gleam/dynamic/decode
 import gleam/hackney
@@ -153,13 +154,21 @@ pub fn send_media_group(
     |> request.set_scheme(http.Https)
     |> multipart_form.to_request(form_data)
 
-  use resp <- result.try(httpc.send_bits(r))
+  use resp <- result.try(hackney.send_bits(
+    r |> request.map(bytes_tree.from_bit_array),
+  ))
 
   glight.logger() |> glight.info("Request has been sent")
 
   // Detailed error logging
   logging.log(logging.Info, "Response status: " <> resp.status |> int.to_string)
-  //logging.log(logging.Info, "Response body: " <> resp_body.body)
+  case bit_array.to_string(resp.body) {
+    Ok(body_as_string) ->
+      glight.logger() |> glight.info("Response body: " <> body_as_string)
+    Error(_) ->
+      glight.logger()
+      |> glight.info("Unable to covert the response body into a string")
+  }
 
   // We get a response record back
   resp.status

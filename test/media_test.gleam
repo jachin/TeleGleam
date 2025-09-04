@@ -1,3 +1,4 @@
+import file_size
 import gleam/result
 import gleeunit
 import gleeunit/should
@@ -15,6 +16,7 @@ fn test_data() {
       file_path: "red.jpg",
       order: 0,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -22,6 +24,7 @@ fn test_data() {
       file_path: "blue.jpg",
       order: 1,
       selected: True,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -29,6 +32,7 @@ fn test_data() {
       file_path: "green.jpg",
       order: 2,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
   ]
 }
@@ -61,6 +65,7 @@ pub fn sort_media_test() {
       file_path: "green.jpg",
       order: 2,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -68,6 +73,7 @@ pub fn sort_media_test() {
       file_path: "blue.jpg",
       order: 1,
       selected: True,
+      file_size: file_size.UnknownFileSize,
     ),
     Media(
       media_type: media.Photo(media.Jepg),
@@ -75,6 +81,7 @@ pub fn sort_media_test() {
       file_path: "red.jpg",
       order: 0,
       selected: False,
+      file_size: file_size.UnknownFileSize,
     ),
   ]
   media.sort_media(disordered_data)

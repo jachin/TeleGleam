@@ -9,6 +9,7 @@ import glight
 import utils/logging as utils_logging
 
 import exiftool_caller
+import file_size
 import simplifile
 
 pub type MediaType {
@@ -30,6 +31,7 @@ pub type Media {
     file_path: String,
     order: Int,
     selected: Bool,
+    file_size: file_size.FileSize,
   )
 }
 
@@ -101,6 +103,7 @@ pub fn find_media(absolute_media_path) {
           file_path: f,
           order: i,
           selected: i == 0,
+          file_size: file_size.UnknownFileSize,
         )
       })
     })
@@ -112,16 +115,18 @@ pub fn find_media(absolute_media_path) {
 pub fn file_path_to_media(path) {
   file_path_to_media_type(path)
   |> option.map(fn(media_type) {
+    let media_file_metadata = exiftool_caller.get_media_file_metadata(path)
     Media(
       media_type: media_type,
       caption: option.unwrap(
-        exiftool_caller.get_media_file_metadata(path)
+        media_file_metadata
           |> exiftool_caller.get_description,
         "",
       ),
       file_path: path,
       order: 0,
       selected: True,
+      file_size: exiftool_caller.get_file_size(media_file_metadata),
     )
   })
 }

@@ -1,6 +1,6 @@
 import gleam/erlang/process
+import gleam/hackney
 import gleam/http/response
-import gleam/httpc
 import gleam/int
 import gleam/list
 import gleam/option.{Some}
@@ -37,7 +37,7 @@ pub type Msg {
   RequestFileMetaData
   ReceivedFileMetaData
   UploadGallery
-  UploadGalleryResponse(Result(response.Response(BitArray), httpc.HttpError))
+  UploadGalleryResponse(Result(response.Response(BitArray), hackney.Error))
   MoveSelectionUp
   MoveSelectionDown
   MoveSelectedUp
