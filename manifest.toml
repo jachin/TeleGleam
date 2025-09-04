@@ -10,7 +10,6 @@ packages = [
   { name = "envoy", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "95FD059345AA982E89A0B6E2A3BF1CF43E17A7048DCD85B5B65D3B9E4E39D359" },
   { name = "exiftool_caller", version = "1.0.0", build_tools = ["gleam"], requirements = ["argv", "gleam_erlang", "gleam_json", "gleam_regexp", "gleam_stdlib", "gtempo", "gtz", "shellout"], source = "local", path = "../../Gleam/exiftool_caller" },
   { name = "expo", version = "1.1.0", build_tools = ["mix"], requirements = [], otp_app = "expo", source = "hex", outer_checksum = "FBADF93F4700FB44C331362177BDCA9EEB8097E8B0EF525C9CC501CB9917C960" },
-  { name = "file_streams", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "file_streams", source = "hex", outer_checksum = "309A2D3230E86309E298F1E8FD44AA6B9772AF279D518953F8C5604492842D0F" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "gettext", version = "0.26.2", build_tools = ["mix"], requirements = ["expo"], otp_app = "gettext", source = "hex", outer_checksum = "AA978504BCF76511EFDC22D580BA08E2279CAAB1066B76BB9AA81C4A1E0A32A5" },
   { name = "gleam_community_ansi", version = "1.4.3", build_tools = ["gleam"], requirements = ["gleam_community_colour", "gleam_regexp", "gleam_stdlib"], otp_app = "gleam_community_ansi", source = "hex", outer_checksum = "8A62AE9CC6EA65BEA630D95016D6C07E4F9973565FA3D0DE68DC4200D8E0DD27" },
@@ -32,7 +31,6 @@ packages = [
   { name = "gtempo", version = "7.2.2", build_tools = ["gleam"], requirements = ["gleam_regexp", "gleam_stdlib", "gleam_time"], otp_app = "gtempo", source = "hex", outer_checksum = "51AACF841C5F936455973BAF7C03F1EEBF86EC0F0F8D9EBEE126CB02968D50AC" },
   { name = "gtz", version = "0.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gtempo", "timex", "tz"], otp_app = "gtz", source = "hex", outer_checksum = "275846D06FBABFC9206B997C7364051EC20436C0AC02BEF90D859A1C51E4028B" },
   { name = "hackney", version = "1.25.0", build_tools = ["rebar3"], requirements = ["certifi", "idna", "metrics", "mimerl", "parse_trans", "ssl_verify_fun", "unicode_util_compat"], otp_app = "hackney", source = "hex", outer_checksum = "7209BFD75FD1F42467211FF8F59EA74D6F2A9E81CBCEE95A56711EE79FD6B1D4" },
-  { name = "harbinger", version = "1.0.0", build_tools = ["gleam"], requirements = ["file_streams", "gleam_stdlib"], source = "local", path = "../../Gleam/harbinger" },
   { name = "idna", version = "6.1.1", build_tools = ["rebar3"], requirements = ["unicode_util_compat"], otp_app = "idna", source = "hex", outer_checksum = "92376EB7894412ED19AC475E4A86F7B413C1B9FBB5BD16DCCD57934157944CEA" },
   { name = "jsx", version = "3.1.0", build_tools = ["rebar3"], requirements = [], otp_app = "jsx", source = "hex", outer_checksum = "0C5CC8FDC11B53CC25CF65AC6705AD39E54ECC56D1C22E4ADB8F5A53FB9427F3" },
   { name = "logging", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "logging", source = "hex", outer_checksum = "1098FBF10B54B44C2C7FDF0B01C1253CAFACDACABEFB4B0D027803246753E06D" },
@@ -70,7 +68,6 @@ gleescript = { version = ">= 1.5.1 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glight = { version = ">= 2.1.1 and < 3.0.0" }
 glint = { version = ">= 1.2.1 and < 2.0.0" }
-harbinger = { path = "../../Gleam/harbinger" }
 logging = { version = ">= 1.3.0 and < 2.0.0" }
 multipart_form = { version = ">= 1.0.0 and < 2.0.0" }
 shellout = { version = ">= 1.7.0 and < 2.0.0" }
